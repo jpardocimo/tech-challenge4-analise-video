@@ -8,11 +8,450 @@ Responsabilidades:
 - Cálculo de scores de movimento (geométrico e espacial)
 """
 
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 import numpy as np
 from config.settings import KEYPOINT_MAP
 from utils.geometry import calculate_distance, calculate_angle
 
+
+# ============================================================================
+# CONSTANTES - Thresholds e Ratios
+# ============================================================================
+
+# Thresholds de ângulos articulares
+KNEE_ANGLE_SITTING_THRESHOLD = 140
+KNEE_ANGLE_STANDING_THRESHOLD = 165
+HIP_ANGLE_STANDING_THRESHOLD = 165
+BODY_ANGLE_LYING_THRESHOLD = 60
+BODY_ANGLE_VERTICAL_THRESHOLD = 15
+
+# Ratios para detecção de posição de braços
+ARM_RAISED_OFFSET_RATIO = 0.2
+ARM_FORWARD_OFFSET_RATIO = 0.5
+
+# Tolerância para alinhamento vertical de pernas
+LEG_ALIGNMENT_TOLERANCE_RATIO = 0.4
+
+# Threshold para detecção de postura em pé baseada em torso
+TORSO_STANDING_RATIO_THRESHOLD = 2.0
+
+# Detecção de movimento de pernas
+KNEE_ANGLE_DIFFERENCE_WALKING = 30
+KNEE_ANGLE_STRAIGHT_THRESHOLD = 160
+
+# Confiança mínima
+MIN_KEYPOINTS_FOR_CONFIDENCE = 13
+MIN_VALID_KEYPOINTS_MOTION = 5
+
+
+# ============================================================================
+# FUNÇÕES AUXILIARES PRIVADAS
+# ============================================================================
+
+def _extract_body_keypoints(keypoints, conf_min: float) -> Dict[str, Optional[np.ndarray]]:
+    """
+    Extrai todos os keypoints do corpo de uma vez
+    
+    Args:
+        keypoints: Array de keypoints do YOLO (17x3)
+        conf_min: Confiança mínima
+        
+    Returns:
+        Dicionário com todos os keypoints extraídos
+    """
+    return {
+        'nose': get_keypoint(keypoints, 'nose', conf_min),
+        'left_shoulder': get_keypoint(keypoints, 'left_shoulder', conf_min),
+        'right_shoulder': get_keypoint(keypoints, 'right_shoulder', conf_min),
+        'left_elbow': get_keypoint(keypoints, 'left_elbow', conf_min),
+        'right_elbow': get_keypoint(keypoints, 'right_elbow', conf_min),
+        'left_wrist': get_keypoint(keypoints, 'left_wrist', conf_min),
+        'right_wrist': get_keypoint(keypoints, 'right_wrist', conf_min),
+        'left_hip': get_keypoint(keypoints, 'left_hip', conf_min),
+        'right_hip': get_keypoint(keypoints, 'right_hip', conf_min),
+        'left_knee': get_keypoint(keypoints, 'left_knee', conf_min),
+        'right_knee': get_keypoint(keypoints, 'right_knee', conf_min),
+        'left_ankle': get_keypoint(keypoints, 'left_ankle', conf_min),
+        'right_ankle': get_keypoint(keypoints, 'right_ankle', conf_min),
+    }
+
+
+def _calculate_reference_points(kps: Dict) -> Dict:
+    """
+    Calcula pontos de referência (centros e larguras)
+    
+    Args:
+        kps: Dicionário de keypoints
+        
+    Returns:
+        Dicionário com shoulder_center, hip_center, shoulder_width, body_angle
+    """
+    ref = {}
+    
+    # Calcula centro e largura dos ombros
+    if kps['left_shoulder'] is not None and kps['right_shoulder'] is not None:
+        ref['shoulder_center'] = (kps['left_shoulder'] + kps['right_shoulder']) / 2.0
+        ref['shoulder_width'] = calculate_distance(kps['left_shoulder'], kps['right_shoulder'])
+    else:
+        ref['shoulder_center'] = None
+        ref['shoulder_width'] = None
+    
+    # Calcula centro dos quadris
+    if kps['left_hip'] is not None and kps['right_hip'] is not None:
+        ref['hip_center'] = (kps['left_hip'] + kps['right_hip']) / 2.0
+    else:
+        ref['hip_center'] = None
+    
+    # Calcula ângulo do corpo (inclinação)
+    if ref['shoulder_center'] is not None and ref['hip_center'] is not None:
+        dy = ref['hip_center'][1] - ref['shoulder_center'][1]
+        dx = ref['hip_center'][0] - ref['shoulder_center'][0]
+        ref['body_angle'] = abs(np.degrees(np.arctan2(dy, dx)) - 90)  # 0° = vertical
+    else:
+        ref['body_angle'] = None
+    
+    return ref
+
+
+def _calculate_confidence(kps: Dict) -> float:
+    """
+    Calcula confiança baseada em pontos detectados
+    
+    Args:
+        kps: Dicionário de keypoints
+        
+    Returns:
+        Confiança normalizada (0-1)
+    """
+    detected_points = sum(1 for v in kps.values() if v is not None)
+    return min(1.0, detected_points / MIN_KEYPOINTS_FOR_CONFIDENCE)
+
+
+def _calculate_joint_angles(kps: Dict) -> Dict[str, float]:
+    """
+    Calcula todos os ângulos articulares
+    
+    Args:
+        kps: Dicionário de keypoints
+        
+    Returns:
+        Dicionário com ângulos calculados
+    """
+    angles = {}
+    
+    # Cotovelos (shoulder-elbow-wrist)
+    if kps['left_shoulder'] is not None and kps['left_elbow'] is not None and kps['left_wrist'] is not None:
+        angle = calculate_angle(kps['left_shoulder'], kps['left_elbow'], kps['left_wrist'])
+        if angle is not None:
+            angles['left_elbow'] = angle
+    
+    if kps['right_shoulder'] is not None and kps['right_elbow'] is not None and kps['right_wrist'] is not None:
+        angle = calculate_angle(kps['right_shoulder'], kps['right_elbow'], kps['right_wrist'])
+        if angle is not None:
+            angles['right_elbow'] = angle
+    
+    # Joelhos (hip-knee-ankle)
+    if kps['left_hip'] is not None and kps['left_knee'] is not None and kps['left_ankle'] is not None:
+        angle = calculate_angle(kps['left_hip'], kps['left_knee'], kps['left_ankle'])
+        if angle is not None:
+            angles['left_knee'] = angle
+    
+    if kps['right_hip'] is not None and kps['right_knee'] is not None and kps['right_ankle'] is not None:
+        angle = calculate_angle(kps['right_hip'], kps['right_knee'], kps['right_ankle'])
+        if angle is not None:
+            angles['right_knee'] = angle
+    
+    # Quadris (shoulder-hip-knee)
+    if kps['left_shoulder'] is not None and kps['left_hip'] is not None and kps['left_knee'] is not None:
+        angle = calculate_angle(kps['left_shoulder'], kps['left_hip'], kps['left_knee'])
+        if angle is not None:
+            angles['left_hip'] = angle
+    
+    if kps['right_shoulder'] is not None and kps['right_hip'] is not None and kps['right_knee'] is not None:
+        angle = calculate_angle(kps['right_shoulder'], kps['right_hip'], kps['right_knee'])
+        if angle is not None:
+            angles['right_hip'] = angle
+    
+    # Ombros (elbow-shoulder-hip)
+    if kps['left_elbow'] is not None and kps['left_shoulder'] is not None and kps['left_hip'] is not None:
+        angle = calculate_angle(kps['left_elbow'], kps['left_shoulder'], kps['left_hip'])
+        if angle is not None:
+            angles['left_shoulder'] = angle
+    
+    if kps['right_elbow'] is not None and kps['right_shoulder'] is not None and kps['right_hip'] is not None:
+        angle = calculate_angle(kps['right_elbow'], kps['right_shoulder'], kps['right_hip'])
+        if angle is not None:
+            angles['right_shoulder'] = angle
+    
+    return angles
+
+
+def _check_leg_vertical_alignment(hip, knee, ankle, shoulder_width: float) -> bool:
+    """
+    Verifica se uma perna está verticalmente alinhada (para detecção de standing)
+    
+    Args:
+        hip: Coordenadas do quadril
+        knee: Coordenadas do joelho
+        ankle: Coordenadas do tornozelo
+        shoulder_width: Largura dos ombros (para normalização)
+        
+    Returns:
+        True se a perna está alinhada verticalmente
+    """
+    if hip is None or knee is None or ankle is None:
+        return False
+    
+    ankle_below_knee = ankle[1] > knee[1]
+    max_horizontal_offset = shoulder_width * LEG_ALIGNMENT_TOLERANCE_RATIO
+    hip_knee_aligned = abs(hip[0] - knee[0]) < max_horizontal_offset
+    knee_ankle_aligned = abs(knee[0] - ankle[0]) < max_horizontal_offset
+    
+    return ankle_below_knee and hip_knee_aligned and knee_ankle_aligned
+
+
+def _is_lying_down(ref: Dict) -> bool:
+    """
+    Detecta se pessoa está deitada baseado no ângulo do corpo
+    
+    Args:
+        ref: Dicionário de pontos de referência
+        
+    Returns:
+        True se pessoa está deitada
+    """
+    body_angle = ref.get('body_angle')
+    return body_angle is not None and body_angle > BODY_ANGLE_LYING_THRESHOLD
+
+
+def _is_standing_strict(kps: Dict, angles: Dict, ref: Dict) -> bool:
+    """
+    Detecta se pessoa está em pé usando regra rigorosa
+    
+    Regras:
+    - Joelhos e quadris retos (ângulos > 165°)
+    - Pelo menos um tornozelo detectado
+    - Alinhamento vertical de pelo menos uma perna
+    
+    Args:
+        kps: Dicionário de keypoints
+        angles: Dicionário de ângulos
+        ref: Dicionário de pontos de referência
+        
+    Returns:
+        True se pessoa está em pé
+    """
+    knee_angles = [v for k, v in angles.items() if 'knee' in k]
+    hip_angles = [v for k, v in angles.items() if 'hip' in k]
+    
+    if not knee_angles:
+        return False
+    
+    avg_knee = np.mean(knee_angles)
+    avg_hip = np.mean(hip_angles) if hip_angles else 180
+    
+    # Verifica se joelhos e quadris estão retos
+    if avg_knee <= KNEE_ANGLE_STANDING_THRESHOLD or avg_hip <= HIP_ANGLE_STANDING_THRESHOLD:
+        return False
+    
+    # Verifica se tem pelo menos um tornozelo
+    has_ankle = kps['left_ankle'] is not None or kps['right_ankle'] is not None
+    if not has_ankle:
+        return False
+    
+    shoulder_width = ref.get('shoulder_width', 0)
+    if shoulder_width < 1e-3:
+        return False
+    
+    # Verifica alinhamento vertical de pelo menos uma perna
+    left_aligned = _check_leg_vertical_alignment(
+        kps['left_hip'], kps['left_knee'], kps['left_ankle'], shoulder_width
+    )
+    right_aligned = _check_leg_vertical_alignment(
+        kps['right_hip'], kps['right_knee'], kps['right_ankle'], shoulder_width
+    )
+    
+    return left_aligned or right_aligned
+
+
+def _is_standing_fallback(ref: Dict) -> bool:
+    """
+    Detecta standing usando fallback (quando não há pernas detectadas)
+    
+    Args:
+        ref: Dicionário de pontos de referência
+        
+    Returns:
+        True se provavelmente está em pé
+    """
+    shoulder_center = ref.get('shoulder_center')
+    hip_center = ref.get('hip_center')
+    shoulder_width = ref.get('shoulder_width', 0)
+    body_angle = ref.get('body_angle')
+    
+    if shoulder_center is None or hip_center is None or shoulder_width < 1e-3:
+        return False
+    
+    torso_height = abs(hip_center[1] - shoulder_center[1])
+    torso_ratio = torso_height / shoulder_width
+    
+    return (torso_ratio > TORSO_STANDING_RATIO_THRESHOLD and 
+            body_angle is not None and 
+            body_angle < BODY_ANGLE_VERTICAL_THRESHOLD)
+
+
+def _classify_posture(kps: Dict, angles: Dict, ref: Dict) -> str:
+    """
+    Classifica postura corporal
+    
+    Args:
+        kps: Dicionário de keypoints
+        angles: Dicionário de ângulos
+        ref: Dicionário de pontos de referência
+        
+    Returns:
+        'standing', 'sitting', 'lying_down', ou 'unknown'
+    """
+    # Early return: deitado
+    if _is_lying_down(ref):
+        return 'lying_down'
+    
+    # Detecta baseado em ângulos de joelhos
+    if 'left_knee' in angles or 'right_knee' in angles:
+        knee_angles = [v for k, v in angles.items() if 'knee' in k]
+        avg_knee = np.mean(knee_angles)
+        
+        # Sentado: joelhos dobrados
+        if avg_knee < KNEE_ANGLE_SITTING_THRESHOLD:
+            return 'sitting'
+        
+        # Em pé: regra rigorosa
+        if _is_standing_strict(kps, angles, ref):
+            return 'standing'
+        
+        # Se não passou na regra rigorosa, considera sentado
+        return 'sitting'
+    
+    # Fallback: sem pernas detectadas
+    if _is_standing_fallback(ref):
+        return 'standing'
+    
+    return 'sitting'
+
+
+def _classify_arms(kps: Dict, ref: Dict) -> str:
+    """
+    Classifica posição dos braços
+    
+    Args:
+        kps: Dicionário de keypoints
+        ref: Dicionário de pontos de referência
+        
+    Returns:
+        'raised', 'one_raised', 'forward', 'down', ou 'unknown'
+    """
+    shoulder_center = ref.get('shoulder_center')
+    shoulder_width = ref.get('shoulder_width', 0)
+    
+    if shoulder_center is None or shoulder_width < 1e-3:
+        return 'unknown'
+    
+    shoulder_y = shoulder_center[1]
+    left_arm_raised = False
+    right_arm_raised = False
+    left_arm_forward = False
+    right_arm_forward = False
+    
+    # Detecta braços levantados
+    if kps['left_wrist'] is not None:
+        if kps['left_wrist'][1] < shoulder_y - shoulder_width * ARM_RAISED_OFFSET_RATIO:
+            left_arm_raised = True
+        elif kps['left_wrist'][1] < shoulder_y + shoulder_width * ARM_FORWARD_OFFSET_RATIO:
+            left_arm_forward = True
+    
+    if kps['right_wrist'] is not None:
+        if kps['right_wrist'][1] < shoulder_y - shoulder_width * ARM_RAISED_OFFSET_RATIO:
+            right_arm_raised = True
+        elif kps['right_wrist'][1] < shoulder_y + shoulder_width * ARM_FORWARD_OFFSET_RATIO:
+            right_arm_forward = True
+    
+    # Classifica baseado em combinações
+    if left_arm_raised and right_arm_raised:
+        return 'raised'
+    if left_arm_raised or right_arm_raised:
+        return 'one_raised'
+    if left_arm_forward or right_arm_forward:
+        return 'forward'
+    if kps['left_wrist'] is not None or kps['right_wrist'] is not None:
+        return 'down'
+    
+    return 'unknown'
+
+
+def _classify_legs(angles: Dict) -> str:
+    """
+    Classifica estado das pernas
+    
+    Args:
+        angles: Dicionário de ângulos
+        
+    Returns:
+        'standing', 'walking', 'bent', ou 'unknown'
+    """
+    if 'left_knee' not in angles or 'right_knee' not in angles:
+        return 'unknown'
+    
+    left_knee_angle = angles['left_knee']
+    right_knee_angle = angles['right_knee']
+    
+    # Pernas retas
+    if left_knee_angle > KNEE_ANGLE_STRAIGHT_THRESHOLD and right_knee_angle > KNEE_ANGLE_STRAIGHT_THRESHOLD:
+        return 'standing'
+    
+    # Andando: diferença significativa entre joelhos
+    if abs(left_knee_angle - right_knee_angle) > KNEE_ANGLE_DIFFERENCE_WALKING:
+        return 'walking'
+    
+    return 'bent'
+
+
+def _build_details(ref: Dict, kps: Dict) -> Dict:
+    """
+    Constrói dicionário de detalhes para debug
+    
+    Args:
+        ref: Dicionário de pontos de referência
+        kps: Dicionário de keypoints
+        
+    Returns:
+        Dicionário com informações detalhadas
+    """
+    details = {}
+    
+    if ref.get('body_angle') is not None:
+        details['body_angle'] = ref['body_angle']
+    
+    if ref.get('shoulder_width') is not None:
+        details['shoulder_width'] = ref['shoulder_width']
+    
+    # Calcula torso_ratio se possível
+    shoulder_center = ref.get('shoulder_center')
+    hip_center = ref.get('hip_center')
+    shoulder_width = ref.get('shoulder_width', 0)
+    
+    if shoulder_center is not None and hip_center is not None and shoulder_width > 0:
+        torso_height = abs(hip_center[1] - shoulder_center[1])
+        details['torso_ratio'] = torso_height / shoulder_width
+    
+    detected_points = sum(1 for v in kps.values() if v is not None)
+    details['detected_points'] = detected_points
+    
+    return details
+
+
+# ============================================================================
+# FUNÇÕES PÚBLICAS
+# ============================================================================
 
 def get_keypoint(keypoints, part_name: str, conf_min: float = 0.5) -> Optional[np.ndarray]:
     """
@@ -70,6 +509,7 @@ def analyze_body_pose(keypoints, conf_min: float = 0.5) -> Dict:
             'details': dict - informações detalhadas para debug
         }
     """
+    # Inicializa resultado
     result = {
         'posture': 'unknown',
         'arms': 'unknown',
@@ -82,227 +522,33 @@ def analyze_body_pose(keypoints, conf_min: float = 0.5) -> Dict:
     if keypoints is None:
         return result
 
-    # Extrai keypoints principais
-    nose = get_keypoint(keypoints, 'nose', conf_min)
-    left_shoulder = get_keypoint(keypoints, 'left_shoulder', conf_min)
-    right_shoulder = get_keypoint(keypoints, 'right_shoulder', conf_min)
-    left_elbow = get_keypoint(keypoints, 'left_elbow', conf_min)
-    right_elbow = get_keypoint(keypoints, 'right_elbow', conf_min)
-    left_wrist = get_keypoint(keypoints, 'left_wrist', conf_min)
-    right_wrist = get_keypoint(keypoints, 'right_wrist', conf_min)
-    left_hip = get_keypoint(keypoints, 'left_hip', conf_min)
-    right_hip = get_keypoint(keypoints, 'right_hip', conf_min)
-    left_knee = get_keypoint(keypoints, 'left_knee', conf_min)
-    right_knee = get_keypoint(keypoints, 'right_knee', conf_min)
-    left_ankle = get_keypoint(keypoints, 'left_ankle', conf_min)
-    right_ankle = get_keypoint(keypoints, 'right_ankle', conf_min)
+    # 1. Extrai todos os keypoints
+    kps = _extract_body_keypoints(keypoints, conf_min)
 
-    # Calcula pontos de referência
-    shoulder_center = None
-    hip_center = None
-    shoulder_width = None
-
-    if left_shoulder is not None and right_shoulder is not None:
-        shoulder_center = (left_shoulder + right_shoulder) / 2.0
-        shoulder_width = calculate_distance(left_shoulder, right_shoulder)
-
-    if left_hip is not None and right_hip is not None:
-        hip_center = (left_hip + right_hip) / 2.0
+    # 2. Calcula pontos de referência
+    ref = _calculate_reference_points(kps)
 
     # Validação mínima: precisa de ombros
-    if shoulder_center is None or shoulder_width < 1e-3:
+    if ref['shoulder_center'] is None or ref.get('shoulder_width', 0) < 1e-3:
         return result
 
-    # Calcula confiança baseada em pontos detectados
-    detected_points = sum([
-        nose is not None, left_shoulder is not None, right_shoulder is not None,
-        left_elbow is not None, right_elbow is not None, left_wrist is not None,
-        right_wrist is not None, left_hip is not None, right_hip is not None,
-        left_knee is not None, right_knee is not None, left_ankle is not None,
-        right_ankle is not None
-    ])
-    result['confidence'] = min(1.0, detected_points / 13.0)
+    # 3. Calcula confiança
+    result['confidence'] = _calculate_confidence(kps)
 
-    # =========================================================================
-    # ANÁLISE DE ÂNGULOS ARTICULARES
-    # =========================================================================
+    # 4. Calcula ângulos articulares
+    result['angles'] = _calculate_joint_angles(kps)
 
-    # Cotovelos (shoulder-elbow-wrist)
-    if left_shoulder is not None and left_elbow is not None and left_wrist is not None:
-        angle = calculate_angle(left_shoulder, left_elbow, left_wrist)
-        if angle is not None:
-            result['angles']['left_elbow'] = angle
+    # 5. Classifica postura
+    result['posture'] = _classify_posture(kps, result['angles'], ref)
 
-    if right_shoulder is not None and right_elbow is not None and right_wrist is not None:
-        angle = calculate_angle(right_shoulder, right_elbow, right_wrist)
-        if angle is not None:
-            result['angles']['right_elbow'] = angle
+    # 6. Classifica braços
+    result['arms'] = _classify_arms(kps, ref)
 
-    # Joelhos (hip-knee-ankle)
-    if left_hip is not None and left_knee is not None and left_ankle is not None:
-        angle = calculate_angle(left_hip, left_knee, left_ankle)
-        if angle is not None:
-            result['angles']['left_knee'] = angle
+    # 7. Classifica pernas
+    result['legs'] = _classify_legs(result['angles'])
 
-    if right_hip is not None and right_knee is not None and right_ankle is not None:
-        angle = calculate_angle(right_hip, right_knee, right_ankle)
-        if angle is not None:
-            result['angles']['right_knee'] = angle
-
-    # Quadris (shoulder-hip-knee)
-    if left_shoulder is not None and left_hip is not None and left_knee is not None:
-        angle = calculate_angle(left_shoulder, left_hip, left_knee)
-        if angle is not None:
-            result['angles']['left_hip'] = angle
-
-    if right_shoulder is not None and right_hip is not None and right_knee is not None:
-        angle = calculate_angle(right_shoulder, right_hip, right_knee)
-        if angle is not None:
-            result['angles']['right_hip'] = angle
-
-    # Ombros (elbow-shoulder-hip)
-    if left_elbow is not None and left_shoulder is not None and left_hip is not None:
-        angle = calculate_angle(left_elbow, left_shoulder, left_hip)
-        if angle is not None:
-            result['angles']['left_shoulder'] = angle
-
-    if right_elbow is not None and right_shoulder is not None and right_hip is not None:
-        angle = calculate_angle(right_elbow, right_shoulder, right_hip)
-        if angle is not None:
-            result['angles']['right_shoulder'] = angle
-
-    # =========================================================================
-    # CLASSIFICAÇÃO DE POSTURA (POSTURE)
-    # =========================================================================
-
-    # Calcula ângulo do corpo (inclinação)
-    body_angle = None
-    if shoulder_center is not None and hip_center is not None:
-        dy = hip_center[1] - shoulder_center[1]
-        dx = hip_center[0] - shoulder_center[0]
-        body_angle = abs(np.degrees(np.arctan2(dy, dx)) - 90)  # 0° = vertical
-        result['details']['body_angle'] = body_angle
-
-    # Detecta LYING DOWN (deitado)
-    if body_angle is not None and body_angle > 60:  # > 60° de inclinação
-        result['posture'] = 'lying_down'
-
-    # Detecta SITTING, SQUATTING, STANDING baseado em joelhos e quadris
-    elif 'left_knee' in result['angles'] or 'right_knee' in result['angles']:
-        knee_angles = [v for k, v in result['angles'].items() if 'knee' in k]
-        hip_angles = [v for k, v in result['angles'].items() if 'hip' in k]
-
-        avg_knee = np.mean(knee_angles) if knee_angles else 180
-        avg_hip = np.mean(hip_angles) if hip_angles else 180
-
-        # Calcula torso_ratio para validação adicional
-        torso_height = abs(hip_center[1] - shoulder_center[1]) if hip_center is not None else 0
-        torso_ratio = torso_height / shoulder_width if shoulder_width > 0 else 0
-        result['details']['torso_ratio'] = torso_ratio
-
-        # SITTING: joelhos dobrados
-        if avg_knee < 140:
-            result['posture'] = 'sitting'
-
-        # STANDING: REGRA RIGOROSA
-        elif avg_knee > 165 and avg_hip > 165:
-            has_ankle = left_ankle is not None or right_ankle is not None
-
-            if has_ankle:
-                vertical_alignment_ok = False
-
-                # Verifica perna esquerda
-                if left_hip is not None and left_knee is not None and left_ankle is not None:
-                    ankle_below_knee = left_ankle[1] > left_knee[1]
-                    max_horizontal_offset = shoulder_width * 0.4
-                    hip_knee_aligned = abs(left_hip[0] - left_knee[0]) < max_horizontal_offset
-                    knee_ankle_aligned = abs(left_knee[0] - left_ankle[0]) < max_horizontal_offset
-
-                    if ankle_below_knee and hip_knee_aligned and knee_ankle_aligned:
-                        vertical_alignment_ok = True
-
-                # Verifica perna direita
-                if not vertical_alignment_ok and right_hip is not None and right_knee is not None and right_ankle is not None:
-                    ankle_below_knee = right_ankle[1] > right_knee[1]
-                    max_horizontal_offset = shoulder_width * 0.4
-                    hip_knee_aligned = abs(right_hip[0] - right_knee[0]) < max_horizontal_offset
-                    knee_ankle_aligned = abs(right_knee[0] - right_ankle[0]) < max_horizontal_offset
-
-                    if ankle_below_knee and hip_knee_aligned and knee_ankle_aligned:
-                        vertical_alignment_ok = True
-
-                if vertical_alignment_ok:
-                    result['posture'] = 'standing'
-                else:
-                    result['posture'] = 'sitting'
-            else:
-                result['posture'] = 'sitting'
-        else:
-            result['posture'] = 'sitting'
-
-    # FALLBACK: Sem pernas detectadas
-    elif shoulder_center is not None and hip_center is not None:
-        torso_height = abs(hip_center[1] - shoulder_center[1])
-        torso_ratio = torso_height / shoulder_width if shoulder_width > 0 else 0
-        result['details']['torso_ratio'] = torso_ratio
-
-        if torso_ratio > 2.0 and body_angle is not None and body_angle < 15:
-            result['posture'] = 'standing'
-        else:
-            result['posture'] = 'sitting'
-
-    # =========================================================================
-    # CLASSIFICAÇÃO DE BRAÇOS (ARMS)
-    # =========================================================================
-
-    left_arm_raised = False
-    right_arm_raised = False
-    left_arm_forward = False
-    right_arm_forward = False
-
-    if shoulder_center is not None:
-        shoulder_y = shoulder_center[1]
-
-        # Detecta braços levantados
-        if left_wrist is not None:
-            if left_wrist[1] < shoulder_y - shoulder_width * 0.2:
-                left_arm_raised = True
-            elif left_wrist[1] < shoulder_y + shoulder_width * 0.5:
-                left_arm_forward = True
-
-        if right_wrist is not None:
-            if right_wrist[1] < shoulder_y - shoulder_width * 0.2:
-                right_arm_raised = True
-            elif right_wrist[1] < shoulder_y + shoulder_width * 0.5:
-                right_arm_forward = True
-
-    # Classifica baseado em combinações
-    if left_arm_raised and right_arm_raised:
-        result['arms'] = 'raised'
-    elif left_arm_raised or right_arm_raised:
-        result['arms'] = 'one_raised'
-    elif left_arm_forward or right_arm_forward:
-        result['arms'] = 'forward'
-    elif left_wrist is not None or right_wrist is not None:
-        result['arms'] = 'down'
-
-    # =========================================================================
-    # CLASSIFICAÇÃO DE PERNAS (LEGS)
-    # =========================================================================
-
-    if 'left_knee' in result['angles'] and 'right_knee' in result['angles']:
-        left_knee_angle = result['angles']['left_knee']
-        right_knee_angle = result['angles']['right_knee']
-
-        if left_knee_angle > 160 and right_knee_angle > 160:
-            result['legs'] = 'standing'
-        elif abs(left_knee_angle - right_knee_angle) > 30:
-            result['legs'] = 'walking'
-        else:
-            result['legs'] = 'bent'
-
-    result['details']['shoulder_width'] = shoulder_width
-    result['details']['detected_points'] = detected_points
+    # 8. Adiciona detalhes
+    result['details'] = _build_details(ref, kps)
 
     return result
 
@@ -465,7 +711,7 @@ def calculate_keypoint_motion_variance(
             prev_valid.append(previous_keypoints[i, :2])
             curr_valid.append(current_keypoints[i, :2])
 
-    if len(prev_valid) < 5:  # Precisa de pelo menos 5 keypoints
+    if len(prev_valid) < MIN_VALID_KEYPOINTS_MOTION:
         return None
 
     prev_valid = np.array(prev_valid)
@@ -480,7 +726,6 @@ def calculate_keypoint_motion_variance(
     velocity_variance = np.var(velocities)
 
     # Normaliza pela média para ter escala consistente
-    # (evita que vídeos com pessoas grandes/pequenas tenham escalas diferentes)
     if mean_velocity > 1e-3:
         normalized_variance = velocity_variance / (mean_velocity + 1e-6)
     else:

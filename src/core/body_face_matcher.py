@@ -72,7 +72,7 @@ def match_faces_to_bodies(
         }
 
         # Análise de pose
-        pose_analysis = analyze_body_pose(keypoints, conf_min=0.45)
+        pose_analysis = analyze_body_pose(keypoints, conf_min=0.6)
         body_data['pose_analysis'] = pose_analysis
         body_data['posture'] = pose_analysis['posture']
         body_data['body_pose_confidence'] = pose_analysis['confidence']
@@ -167,6 +167,7 @@ def match_faces_to_bodies(
             body_data['activity'] = activity_label
         elif posture_pt:
             body_data['activity'] = posture_pt
+
 
         # Acumula anomalias
         if body_data['anomalies']:

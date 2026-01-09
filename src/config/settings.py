@@ -42,7 +42,7 @@ LOG_EVERY_N_FRAMES = 1
 LOG_FLUSH_INTERVAL = 30
 
 # =============================================================================
-# DETECÇÃO E ANÁLISE
+# DETECÇÃO E ANÁLISE DE KEYPOINTS, OBJETOS, PESSOAS E FACES 
 # =============================================================================
 
 # Confiança mínima para detecção de keypoints
