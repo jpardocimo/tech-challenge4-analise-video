@@ -284,3 +284,50 @@ def cleanup_old_states(
     ]
     for tid in old_action_states:
         del action_states[tid]
+
+
+def detect_and_merge_pose_anomalies(
+    render_data: list,
+    anomalies_list: list,
+    pose_motion_states: dict,
+    frame_count: int,
+    video_fps: float,
+    skip_frames: int,
+    stats_manager
+):
+    """
+    Detecta anomalias de movimento por pose e adiciona à lista existente.
+    
+    Função de alto nível que encapsula a detecção de anomalias e atualização
+    da lista de anomalias e estatísticas.
+
+    Args:
+        render_data: Lista de pessoas detectadas com dados
+        anomalies_list: Lista de anomalias existentes (será modificada in-place)
+        pose_motion_states: Dicionário de estados de pose por track_id
+        frame_count: Número do frame atual
+        video_fps: FPS do vídeo
+        skip_frames: Intervalo de frames processados
+        stats_manager: Gerenciador de estatísticas
+    """
+    # Calcula delta time baseado no skip frames
+    delta_time = float(skip_frames) / float(max(1, video_fps))
+    
+    # Processa anomalias de movimento
+    pose_anomalies = process_pose_anomalies(
+        render_data=render_data,
+        pose_motion_states=pose_motion_states,
+        frame_count=frame_count,
+        delta_time=delta_time,
+        fps=video_fps,
+        pose_motion_window=60,
+        pose_motion_k_geometric=2.5,
+        pose_motion_k_spatial=2.5,
+        anomaly_cooldown_frames=5
+    )
+
+    # Adiciona anomalias detectadas à lista (evita duplicatas)
+    for anomaly_msg in pose_anomalies:
+        if anomaly_msg not in anomalies_list:
+            anomalies_list.append(anomaly_msg)
+            stats_manager.add_anomalia()

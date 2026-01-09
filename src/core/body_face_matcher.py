@@ -10,7 +10,6 @@ Responsabilidades:
 from typing import List, Dict, Tuple
 from config.settings import POSTURE_LABELS, EMOTION_INSTABILITY_THRESHOLD
 from core.pose_analysis import analyze_body_pose
-from core.emotion_detector import process_emotion
 from models.face_identity import resolve_face_identity
 
 
@@ -18,12 +17,12 @@ def match_faces_to_bodies(
     frame,
     bodies: List[Tuple],
     faces: List,
-    emotion_cache: Dict,
     frame_count: int,
     detected_objects: List[Dict],
     activity_classifier,
-    action_states: Dict,
-    stats: Dict
+    state_manager,
+    stats_manager,
+    emotion_manager
 ) -> Tuple[List[Dict], List[str]]:
     """
     Associa faces detectadas aos corpos e processa identidade, emoção e atividade
@@ -32,12 +31,12 @@ def match_faces_to_bodies(
         frame: Frame de vídeo atual
         bodies: Lista de tuplas (x1, y1, x2, y2, conf, keypoints, track_id)
         faces: Lista de faces detectadas (InsightFace)
-        emotion_cache: Cache de emoções
         frame_count: Número do frame atual
         detected_objects: Lista de objetos detectados
         activity_classifier: Instância do ActivityClassifier
-        action_states: Estados de ação por track_id
-        stats: Estatísticas globais
+        state_manager: Instância do StateManager
+        stats_manager: Instância do StatsManager
+        emotion_manager: Instância do EmotionManager
 
     Returns:
         Tupla (render_data, anomalies_list)
@@ -86,19 +85,19 @@ def match_faces_to_bodies(
 
         # Detecção de queda brusca (mudança standing -> lying_down)
         temp_track_id = track_id if track_id is not None else (-1000 - body_index)
-        action_state = action_states.get(temp_track_id)
+        action_state = state_manager.get_action_state(temp_track_id)
 
         if action_state is None:
             from core.activity_analysis import ActionState
             action_state = ActionState()
-            action_states[temp_track_id] = action_state
+            state_manager.set_action_state(temp_track_id, action_state)
 
         current_posture = pose_analysis['posture']
         if action_state.previous_posture is not None:
             # Detecta queda: estava em pé/sentado e agora está deitado
             if action_state.previous_posture in ['standing', 'sitting'] and current_posture == 'lying_down':
                 body_data['anomalies'].append('POSSÍVEL QUEDA DETECTADA')
-                stats['anomalias_total'] += 1
+                stats_manager.add_anomalia()
 
         action_state.previous_posture = current_posture
 
@@ -129,17 +128,17 @@ def match_faces_to_bodies(
 
             # Identifica pessoa
             face_id = resolve_face_identity(face.embedding)
-            stats['pessoas_unicas'].add(face_id)
+            stats_manager.add_pessoa(face_id)
 
             # Processa emoção
-            emotion, emotion_history = process_emotion(
-                frame, face, face_id, emotion_cache, frame_count, stats
+            emotion, emotion_history = emotion_manager.process_emotion(
+                frame, face, face_id, frame_count, stats_manager
             )
 
             # Detecta instabilidade emocional
             if len(emotion_history) > EMOTION_INSTABILITY_THRESHOLD:
                 body_data['anomalies'].append("Instabilidade Emocional")
-                stats['anomalias_total'] += 1
+                stats_manager.add_anomalia()
 
             body_data['face_id'] = face_id
             body_data['face_bbox'] = face.bbox.astype(int)
@@ -174,7 +173,7 @@ def match_faces_to_bodies(
             frame_anomalies.extend(body_data['anomalies'])
 
         # Atualiza estatísticas de atividades
-        stats['atividades'][body_data['activity']] += 1
+        stats_manager.add_atividade(body_data['activity'])
 
         render_data.append(body_data)
 
