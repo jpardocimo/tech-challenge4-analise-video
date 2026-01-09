@@ -98,3 +98,38 @@ class VideoAnalysisLogger:
         """
         self.flush()
         self.file.close()
+
+    def log_frame_if_needed(
+        self,
+        frame_count: int,
+        fps: int,
+        render_data: List[Dict],
+        anomalies: List[str],
+        detected_objects: List[Dict],
+        log_interval: int
+    ):
+        """
+        Loga frame se estiver no intervalo correto.
+
+        Args:
+            frame_count: Número do frame
+            fps: Frames por segundo
+            render_data: Dados de renderização
+            anomalies: Lista de anomalias
+            detected_objects: Objetos detectados
+            log_interval: Intervalo entre logs (em frames)
+        """
+        if frame_count % log_interval == 0:
+            timestamp_ms = int((frame_count * 1000) / fps)
+            self.log_frame(frame_count, timestamp_ms, render_data, anomalies, detected_objects)
+
+    def flush_if_needed(self, frame_count: int, flush_interval: int):
+        """
+        Flush periódico do buffer de escrita.
+
+        Args:
+            frame_count: Número do frame
+            flush_interval: Intervalo entre flushes (em frames)
+        """
+        if frame_count % flush_interval == 0:
+            self.flush()

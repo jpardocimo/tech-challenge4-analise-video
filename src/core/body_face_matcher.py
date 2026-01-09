@@ -1,11 +1,16 @@
 """
 Módulo para associação entre faces detectadas e corpos
+
+Responsabilidades:
+- Associar faces aos corpos detectados (matching espacial)
+- Orquestrar análise completa (pose + emoção + atividade)
+- Gerar dados consolidados para renderização
 """
 
 from typing import List, Dict, Tuple
 from config.settings import POSTURE_LABELS, EMOTION_INSTABILITY_THRESHOLD
-from analysis.pose_analyzer import analyze_body_pose
-from detection.emotion_detector import process_emotion
+from core.pose_analysis import analyze_body_pose
+from core.emotion_detector import process_emotion
 from models.face_identity import resolve_face_identity
 
 
@@ -84,7 +89,7 @@ def match_faces_to_bodies(
         action_state = action_states.get(temp_track_id)
 
         if action_state is None:
-            from analysis.activity_classifier import ActionState
+            from core.activity_analysis import ActionState
             action_state = ActionState()
             action_states[temp_track_id] = action_state
 

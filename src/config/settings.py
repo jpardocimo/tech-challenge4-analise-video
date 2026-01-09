@@ -89,8 +89,11 @@ ANOMALY_STD_MULTIPLIER = 3.0
 # Janela para movimento de pose (frames)
 POSE_MOTION_WINDOW = 60
 
-# Multiplicador K para detecção de movimento abrupto
+# Multiplicador K para detecção de movimento abrupto de geometria (pose)
 POSE_MOTION_K = 2.5
+
+# Multiplicador K para detecção de movimento espacial (variância de keypoints)
+POSE_MOTION_K_SPATIAL = 2.5
 
 # Cooldown entre detecções de anomalia (frames)
 ANOMALY_COOLDOWN_FRAMES = 5

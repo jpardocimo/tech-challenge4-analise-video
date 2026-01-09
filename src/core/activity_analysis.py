@@ -1,5 +1,10 @@
 """
 Módulo para classificação de atividades usando rule engine configurável
+
+Responsabilidades:
+- Classificar atividades baseado em regras configuráveis (JSON)
+- Detectar ações específicas (acenar, mão no rosto, etc)
+- Manter estado temporal de ações para suavização
 """
 
 import json
@@ -12,7 +17,7 @@ from config.settings import (
     HAND_POSITION_HISTORY_WINDOW,
     HAND_NEAR_FACE_MIN_FRAMES
 )
-from analysis.pose_analyzer import get_keypoint
+from core.pose_analysis import get_keypoint
 
 
 class ActionState:

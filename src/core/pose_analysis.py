@@ -1,5 +1,11 @@
 """
 Módulo para análise de pose corporal usando keypoints do YOLO Pose
+
+Responsabilidades:
+- Extração de keypoints individuais
+- Análise de postura corporal (em pé, sentado, deitado)
+- Extração de features geométricas (distâncias, ângulos)
+- Cálculo de scores de movimento (geométrico e espacial)
 """
 
 from typing import Dict, Optional
@@ -387,7 +393,7 @@ def extract_pose_features(keypoints, conf_min: float = 0.5) -> Optional[Dict]:
 
 def calculate_pose_motion_score(previous_features: Dict, current_features: Dict, delta_time: float) -> Optional[float]:
     """
-    Calcula score de movimento baseado em variação de features
+    Calcula score de movimento geométrico baseado em variação de features de pose
 
     Args:
         previous_features: Features do frame anterior
@@ -395,7 +401,7 @@ def calculate_pose_motion_score(previous_features: Dict, current_features: Dict,
         delta_time: Intervalo de tempo entre frames (segundos)
 
     Returns:
-        Score de movimento (velocidade agregada) ou None
+        Score de movimento (velocidade agregada de mudança geométrica) ou None
     """
     if previous_features is None or current_features is None or delta_time <= 0:
         return None
@@ -422,3 +428,62 @@ def calculate_pose_motion_score(previous_features: Dict, current_features: Dict,
     # Peso para balancear distâncias normalizadas e ângulos
     score = dist_part + 0.02 * ang_part
     return score
+
+
+def calculate_keypoint_motion_variance(
+    previous_keypoints: np.ndarray,
+    current_keypoints: np.ndarray,
+    delta_time: float,
+    conf_min: float = 0.5
+) -> Optional[float]:
+    """
+    Calcula variância de movimento dos keypoints (detecção espacial).
+    Robusto contra movimento de câmera (pan/zoom).
+
+    Se todos os keypoints se movem uniformemente = câmera movendo (variância baixa)
+    Se keypoints têm movimentos variados = pessoa se movendo bruscamente (variância alta)
+
+    Args:
+        previous_keypoints: Array (17, 3) do frame anterior
+        current_keypoints: Array (17, 3) do frame atual
+        delta_time: Tempo entre frames (segundos)
+        conf_min: Confiança mínima para considerar keypoint
+
+    Returns:
+        Variância normalizada do movimento (quanto maior, mais heterogêneo) ou None
+    """
+    if previous_keypoints is None or current_keypoints is None or delta_time <= 0:
+        return None
+
+    # Extrai keypoints válidos
+    prev_valid = []
+    curr_valid = []
+
+    for i in range(min(17, previous_keypoints.shape[0])):
+        if (previous_keypoints[i, 2] >= conf_min and
+            current_keypoints[i, 2] >= conf_min):
+            prev_valid.append(previous_keypoints[i, :2])
+            curr_valid.append(current_keypoints[i, :2])
+
+    if len(prev_valid) < 5:  # Precisa de pelo menos 5 keypoints
+        return None
+
+    prev_valid = np.array(prev_valid)
+    curr_valid = np.array(curr_valid)
+
+    # Calcula deslocamento de cada keypoint
+    displacements = curr_valid - prev_valid
+    velocities = np.linalg.norm(displacements, axis=1) / delta_time
+
+    # Calcula média e variância
+    mean_velocity = np.mean(velocities)
+    velocity_variance = np.var(velocities)
+
+    # Normaliza pela média para ter escala consistente
+    # (evita que vídeos com pessoas grandes/pequenas tenham escalas diferentes)
+    if mean_velocity > 1e-3:
+        normalized_variance = velocity_variance / (mean_velocity + 1e-6)
+    else:
+        normalized_variance = 0.0
+
+    return float(normalized_variance)

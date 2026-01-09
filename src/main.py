@@ -10,41 +10,34 @@ import os
 
 # Importações de configuração
 from config.settings import (
-    INPUT_VIDEO,#video de entrada
-    OUTPUT_VIDEO,#video de saida
-    OUTPUT_REPORT,#relatorio
-    OUTPUT_LOG_CSV,#log
-    OUTPUT_DIR,#pasta de saida
-    ACTIONS_CONFIG_PATH,#configuracao de atividades
-    SKIP_FRAMES,#frames para pular
-    LOG_EVERY_N_FRAMES,#frames para log
-    LOG_FLUSH_INTERVAL,#intervalo de log
-    POSE_MOTION_WINDOW,#janela de movimento
-    POSE_MOTION_K,#k de movimento
-    ANOMALY_COOLDOWN_FRAMES,#frames de cooldown - evita disparar a mesma anomalia repetidamente
+    INPUT_VIDEO,
+    OUTPUT_VIDEO,
+    OUTPUT_REPORT,
+    OUTPUT_LOG_CSV,
+    OUTPUT_DIR,
+    ACTIONS_CONFIG_PATH,
+    SKIP_FRAMES,
+    LOG_EVERY_N_FRAMES,
+    LOG_FLUSH_INTERVAL,
+    POSE_MOTION_WINDOW,
+    POSE_MOTION_K,
+    POSE_MOTION_K_SPATIAL,
+    ANOMALY_COOLDOWN_FRAMES,
 )
 
 # Importações de modelos
 from models.model_loader import load_models
 
-# Importações de detecção
-from detection.object_detector import detect_objects
-from detection.person_detector import detect_people_with_tracking
-from detection.face_detector import detect_faces
+# Importações do core (detecção + análise)
+from core.object_detector import detect_objects
+from core.person_detector import detect_people_with_tracking
+from core.face_detector import detect_faces
+from core.activity_analysis import ActivityClassifier
+from core.anomaly_detector import process_pose_anomalies, cleanup_old_states
+from core.body_face_matcher import match_faces_to_bodies
 
-# Importações de análise
-from analysis.pose_analyzer import extract_pose_features, calculate_pose_motion_score
-from analysis.activity_classifier import ActivityClassifier
-from analysis.anomaly_detector import PoseMotionState
-from analysis.body_face_matcher import match_faces_to_bodies
-
-# Importações de visualização - desenha as linhas e box nos objetos, pessoas, anomalias e os labels
-from visualization.renderer import (
-    draw_objects,#desenho de objetos
-    draw_person_ui,#desenho de pessoas
-    draw_anomaly_banner,#desenho de anomalias
-    draw_text_buffer,#desenho de texto
-)
+# Importações de visualização
+from visualization.renderer import render_frame
 
 # Importações de reporting
 from reporting.logger import VideoAnalysisLogger
@@ -174,146 +167,60 @@ def process_video():
             # ANÁLISE DE MOVIMENTO POR POSE (detecção de movimentos abruptos)
             # ================================================================
 
-            can_update_pose_motion = should_process_ai
-            delta_time = float(SKIP_FRAMES) / float(max(1, fps))
+            if should_process_ai and render_data:
+                delta_time = float(SKIP_FRAMES) / float(max(1, fps))
 
-            if can_update_pose_motion and render_data:
-                for item_index, item in enumerate(render_data):
-                    # Obtém ID de tracking
-                    track_id = item.get("track_id", None)
-                    if track_id is None:
-                        face_id = item.get("face_id", None)
-                        track_id = int(face_id) if face_id is not None else (-1000 - item_index)
+                pose_anomalies = process_pose_anomalies(
+                    render_data=render_data,
+                    pose_motion_states=pose_motion_states,
+                    frame_count=frame_count,
+                    delta_time=delta_time,
+                    fps=fps,
+                    pose_motion_window=POSE_MOTION_WINDOW,
+                    pose_motion_k_geometric=POSE_MOTION_K,
+                    pose_motion_k_spatial=POSE_MOTION_K_SPATIAL,
+                    anomaly_cooldown_frames=ANOMALY_COOLDOWN_FRAMES
+                )
 
-                    keypoints = item.get("kps", None)
-                    if keypoints is None:
-                        continue
-
-                    # Extrai features de pose
-                    features = extract_pose_features(keypoints, conf_min=0.45)
-                    if features is None:
-                        continue
-
-                    # Obtém ou cria estado de pose
-                    pose_state = pose_motion_states.get(track_id)
-                    if pose_state is None:
-                        pose_state = PoseMotionState(
-                            window=POSE_MOTION_WINDOW,
-                            k=POSE_MOTION_K
-                        )
-                        pose_motion_states[track_id] = pose_state
-
-                    # Calcula score de movimento
-                    motion_score = calculate_pose_motion_score(
-                        pose_state.previous_features,
-                        features,
-                        delta_time
-                    )
-
-                    pose_state.previous_features = features
-                    pose_state.last_seen_frame = frame_count
-
-                    if motion_score is None:
-                        item["pose_dbg"] = "poseScore=-- (no-score)"
-                        continue
-
-                    # Detecta anomalia
-                    is_anomaly, mean, threshold = pose_state.detector.update(motion_score)
-
-                    # Anti-jitter: precisa de confirmação
-                    if mean is None or threshold is None:
-                        pose_state.spike_count = 0
-                        item["pose_dbg"] = f"poseScore={motion_score:.3f} (warmup)"
-                        continue
-
-                    delta = motion_score - threshold
-
-                    if is_anomaly:
-                        pose_state.spike_count += 1
-                    else:
-                        pose_state.spike_count = 0
-
-                    is_anomaly_final = (pose_state.spike_count >= 1) or (delta > 10.0)
-                    item["pose_dbg"] = (
-                        f"poseScore={motion_score:.3f} thr={threshold:.3f} "
-                        f"Δ={delta:.3f} spikes={pose_state.spike_count}"
-                    )
-
-                    # Dispara anomalia com cooldown
-                    if is_anomaly_final and (frame_count - pose_state.last_anomaly_frame) > ANOMALY_COOLDOWN_FRAMES:
-                        pose_state.last_anomaly_frame = frame_count
-                        pose_state.spike_count = 0
-
-                        anomaly_msg = f"MOVIMENTO ABRUPTO (POSE T{track_id})"
-                        if anomaly_msg not in item["anomalies"]:
-                            item["anomalies"].append(anomaly_msg)
-
-                        if anomaly_msg not in anomalies_list:
-                            anomalies_list.append(anomaly_msg)
-                            stats["anomalias_total"] += 1
+                # Adiciona anomalias detectadas
+                for anomaly_msg in pose_anomalies:
+                    if anomaly_msg not in anomalies_list:
+                        anomalies_list.append(anomaly_msg)
+                        stats["anomalias_total"] += 1
 
             # ================================================================
             # LOGGING
             # ================================================================
 
-            if frame_count % LOG_EVERY_N_FRAMES == 0:
-                timestamp_ms = int((frame_count * 1000) / fps)
-                logger.log_frame(
-                    frame_count,
-                    timestamp_ms,
-                    render_data,
-                    anomalies_list,
-                    objects if should_process_ai else []
-                )
-
-            # Flush periódico do buffer de log
-            if frame_count % LOG_FLUSH_INTERVAL == 0:
-                logger.flush()
+            logger.log_frame_if_needed(
+                frame_count=frame_count,
+                fps=fps,
+                render_data=render_data,
+                anomalies=anomalies_list,
+                detected_objects=objects if should_process_ai else [],
+                log_interval=LOG_EVERY_N_FRAMES
+            )
+            logger.flush_if_needed(frame_count, LOG_FLUSH_INTERVAL)
 
             # ================================================================
             # RENDERIZAÇÃO
             # ================================================================
 
-            # Desenha objetos detectados
-            if should_process_ai:
-                draw_objects(frame, objects)
-
-            text_buffer = []
-
-            # Banner de anomalia
-            has_anomaly = len(anomalies_list) > 0
-            if has_anomaly:
-                anomaly_text = draw_anomaly_banner(frame, anomalies_list, frame_width)
-                if anomaly_text:
-                    text_buffer.append(anomaly_text)
-
-            # Desenha UI de cada pessoa
-            for item in render_data:
-                draw_person_ui(frame, text_buffer, item)
-
-            # Desenha todos os textos
-            draw_text_buffer(frame, text_buffer)
+            render_frame(
+                frame=frame,
+                render_data=render_data,
+                anomalies_list=anomalies_list,
+                objects=objects,
+                should_process_ai=should_process_ai,
+                frame_width=frame_width
+            )
 
             # ================================================================
-            # LIMPEZA DE ESTADOS ANTIGOS (otimizado: a cada 30 frames)
+            # LIMPEZA DE ESTADOS ANTIGOS
             # ================================================================
 
             if frame_count % 30 == 0:
-                # Remove estados de pose antigos
-                old_pose_states = [
-                    tid for tid, state in pose_motion_states.items()
-                    if frame_count - state.last_seen_frame > 90
-                ]
-                for tid in old_pose_states:
-                    del pose_motion_states[tid]
-
-                # Remove action states sem pose state correspondente
-                old_action_states = [
-                    tid for tid in action_states.keys()
-                    if tid not in pose_motion_states
-                ]
-                for tid in old_action_states:
-                    del action_states[tid]
+                cleanup_old_states(pose_motion_states, action_states, frame_count)
 
             # ================================================================
             # OUTPUT

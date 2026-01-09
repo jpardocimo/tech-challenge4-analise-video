@@ -205,3 +205,41 @@ def draw_text_buffer(frame, text_buffer: List[Dict]):
             1,
             cv2.LINE_AA
         )
+
+
+def render_frame(frame, render_data, anomalies_list, objects, should_process_ai, frame_width):
+    """
+    Renderiza todos os elementos visuais no frame.
+    Orquestra as funções de desenho existentes.
+
+    Args:
+        frame: Frame de vídeo
+        render_data: Lista de pessoas detectadas
+        anomalies_list: Lista de anomalias
+        objects: Lista de objetos detectados
+        should_process_ai: Se deve desenhar objetos
+        frame_width: Largura do frame
+
+    Returns:
+        frame anotado (modifica in-place, mas retorna para clareza)
+    """
+    # Desenha objetos detectados
+    if should_process_ai:
+        draw_objects(frame, objects)
+
+    text_buffer = []
+
+    # Banner de anomalia
+    if anomalies_list:
+        anomaly_text = draw_anomaly_banner(frame, anomalies_list, frame_width)
+        if anomaly_text:
+            text_buffer.append(anomaly_text)
+
+    # Desenha UI de cada pessoa
+    for item in render_data:
+        draw_person_ui(frame, text_buffer, item)
+
+    # Desenha todos os textos
+    draw_text_buffer(frame, text_buffer)
+
+    return frame
