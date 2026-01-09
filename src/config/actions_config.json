@@ -21,23 +21,9 @@
         "both_arms_up": true
       }
     },
-    "lendo_na_mesa": {
+    "lendo_celular": {
       "priority": 10,
-      "required_objects": ["book", "dining table"],
-      "pose_conditions": {
-        "posture": "sitting"
-      }
-    },
-    "lendo": {
-      "priority": 10,
-      "required_objects": ["book"],
-      "pose_conditions": {
-        "posture": ["sitting", "standing"]
-      }
-    },
-    "usando_celular": {
-      "priority": 9,
-      "required_objects": ["cell phone"],
+      "required_objects": ["book", "cell phone"],
       "pose_conditions": {
         "posture": ["sitting", "standing"]
       }

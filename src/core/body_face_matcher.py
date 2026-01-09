@@ -8,7 +8,14 @@ Responsabilidades:
 """
 
 from typing import List, Dict, Tuple
-from config.settings import POSTURE_LABELS, EMOTION_INSTABILITY_THRESHOLD
+from config.settings import (
+    POSTURE_LABELS,
+    EMOTION_INSTABILITY_THRESHOLD,
+    SHOW_POSTURE_IN_ACTIVITY_LABEL,
+    DEFAULT_ACTIVITY_LABEL,
+    POSTURE_ACTIVITY_LABELS,
+    ANOMALY_MESSAGES
+)
 from core.pose_analysis import analyze_body_pose
 from models.face_identity import resolve_face_identity
 
@@ -62,7 +69,7 @@ def match_faces_to_bodies(
         body_data = {
             'coords': (bx1, by1, bx2, by2),
             'track_id': track_id,
-            'activity': "Atividade nao detectada",
+            'activity': DEFAULT_ACTIVITY_LABEL,  # Usa constante do settings
             'face_id': None,
             'face_bbox': None,
             'emotion': None,
@@ -77,11 +84,16 @@ def match_faces_to_bodies(
         body_data['posture'] = pose_analysis['posture']
         body_data['body_pose_confidence'] = pose_analysis['confidence']
 
-        # Detecta automaticamente atividades baseadas em postura
-        if pose_analysis['posture'] == 'lying_down':
-            body_data['activity'] = 'Deitado'
-        elif pose_analysis['posture'] == 'sitting':
-            body_data['activity'] = 'Sentado'
+        # Define atividade baseada em postura (apenas se flag estiver ativa)
+        # Caso contrário, mantém DEFAULT_ACTIVITY_LABEL
+        if not SHOW_POSTURE_IN_ACTIVITY_LABEL:
+            # Não mostra postura, mantém fallback padrão
+            pass
+        else:
+            # Mostra postura como atividade fallback
+            posture_label = POSTURE_ACTIVITY_LABELS.get(pose_analysis['posture'])
+            if posture_label:
+                body_data['activity'] = posture_label
 
         # Detecção de queda brusca (mudança standing -> lying_down)
         temp_track_id = track_id if track_id is not None else (-1000 - body_index)
@@ -96,7 +108,7 @@ def match_faces_to_bodies(
         if action_state.previous_posture is not None:
             # Detecta queda: estava em pé/sentado e agora está deitado
             if action_state.previous_posture in ['standing', 'sitting'] and current_posture == 'lying_down':
-                body_data['anomalies'].append('POSSÍVEL QUEDA DETECTADA')
+                body_data['anomalies'].append(ANOMALY_MESSAGES['fall_detected'])  # Usa constante
                 stats_manager.add_anomalia()
 
         action_state.previous_posture = current_posture
@@ -137,7 +149,7 @@ def match_faces_to_bodies(
 
             # Detecta instabilidade emocional
             if len(emotion_history) > EMOTION_INSTABILITY_THRESHOLD:
-                body_data['anomalies'].append("Instabilidade Emocional")
+                body_data['anomalies'].append("Possível CARETA ou Instabilidade Emocional")
                 stats_manager.add_anomalia()
 
             body_data['face_id'] = face_id
@@ -157,16 +169,21 @@ def match_faces_to_bodies(
         # Mantém activity_raw e posture separados
         body_data['activity_raw'] = activity_label
 
-        # Cria label composta combinando postura + atividade
-        posture = pose_analysis['posture']
-        posture_pt = POSTURE_LABELS.get(posture, '')
-
-        if activity_label != "Atividade nao detectada" and posture_pt:
-            body_data['activity'] = f"{posture_pt} - {activity_label}"
-        elif activity_label != "Atividade nao detectada":
-            body_data['activity'] = activity_label
-        elif posture_pt:
-            body_data['activity'] = posture_pt
+        # Cria label composta combinando postura + atividade (se flag ativa)
+        if activity_label != DEFAULT_ACTIVITY_LABEL:
+            # Atividade específica foi detectada
+            if SHOW_POSTURE_IN_ACTIVITY_LABEL:
+                # Combina postura + atividade
+                posture = pose_analysis['posture']
+                posture_pt = POSTURE_LABELS.get(posture, '')
+                if posture_pt:
+                    body_data['activity'] = f"{posture_pt} - {activity_label}"
+                else:
+                    body_data['activity'] = activity_label
+            else:
+                # Mostra apenas a atividade
+                body_data['activity'] = activity_label
+        # Se não detectou atividade, mantém o que já foi definido (postura ou DEFAULT_ACTIVITY_LABEL)
 
 
         # Acumula anomalias

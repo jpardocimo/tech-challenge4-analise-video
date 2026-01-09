@@ -76,6 +76,26 @@ ACTION_HOLD_FRAMES = 8
 # Frames necessários para confirmar nova atividade
 ACTION_CONFIRM_FRAMES = 4
 
+# Flag para exibir postura no label de atividade
+# True: Mostra "Sentado - Lendo" | False: Mostra apenas "Lendo"
+SHOW_POSTURE_IN_ACTIVITY_LABEL = False
+
+# Atividade padrão quando nenhuma atividade específica é detectada
+DEFAULT_ACTIVITY_LABEL = "Atividade nao detectada"
+
+# Labels de atividades baseadas em postura (fallback)
+POSTURE_ACTIVITY_LABELS = {
+    'lying_down': 'Deitado',
+    'sitting': 'Sentado',
+    'standing': 'Em pe'
+}
+
+# Mensagens de anomalias
+ANOMALY_MESSAGES = {
+    'fall_detected': 'POSSÍVEL QUEDA DETECTADA',
+    'abrupt_movement': 'MOVIMENTO ABRUPTO'
+}
+
 # =============================================================================
 # DETECÇÃO DE ANOMALIAS
 # =============================================================================
@@ -115,7 +135,7 @@ MIN_FACE_SIZE = 48
 EMOTION_HISTORY_WINDOW = 30
 
 # Threshold para detectar instabilidade emocional (mudanças)
-EMOTION_INSTABILITY_THRESHOLD = 5
+EMOTION_INSTABILITY_THRESHOLD = 3
 
 # =============================================================================
 # SUAVIZAÇÃO E TEMPORAL

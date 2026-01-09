@@ -175,14 +175,14 @@ def process_pose_anomalies(
                 else:
                     pose_state.spike_count = 0
 
-                is_geometric_anomaly = (pose_state.spike_count >= 1) or (geometric_delta > 10.0)
+                is_geometric_anomaly = (pose_state.spike_count >= 1) or (geometric_delta > 15.0)
 
         # ============== DETECÇÃO ESPACIAL (movimento físico heterogêneo) ==============
         spatial_score = calculate_keypoint_motion_variance(
             pose_state.previous_keypoints,
             keypoints,
             delta_time,
-            conf_min=0.45
+            conf_min=0.55
         )
 
         is_spatial_anomaly = False
@@ -201,8 +201,8 @@ def process_pose_anomalies(
 
                 is_spatial_anomaly = (pose_state.spatial_spike_count >= 1) or (spatial_delta > 5.0)
 
-        # ============== DECISÃO FINAL ==============
-        is_anomaly_final = is_geometric_anomaly or is_spatial_anomaly
+        # ============== DECISÃO FINAL ============== or is_spatial_anomaly
+        is_anomaly_final = is_geometric_anomaly 
 
         # Atualiza estado
         pose_state.previous_features = features
@@ -213,17 +213,17 @@ def process_pose_anomalies(
             pose_state.previous_keypoints = keypoints.copy() if hasattr(keypoints, 'copy') else keypoints
         pose_state.last_seen_frame = frame_count
 
-        # Debug info
-        if geometric_score is not None and spatial_score is not None:
-            item["pose_dbg"] = (
-                f"geom={geometric_score:.2f}(Δ={geometric_delta:.1f}) "
-                f"spat={spatial_score:.2f}(Δ={spatial_delta:.1f}) "
-                f"spk={pose_state.spike_count}/{pose_state.spatial_spike_count}"
-            )
-        elif geometric_score is not None:
-            item["pose_dbg"] = f"geom={geometric_score:.2f} spat=warmup"
-        else:
-            item["pose_dbg"] = "poseScore=-- (warmup)"
+        # # Debug info
+        # if geometric_score is not None and spatial_score is not None:
+        #     item["pose_dbg"] = (
+        #         f"geom={geometric_score:.2f}(Δ={geometric_delta:.1f}) "
+        #         f"spat={spatial_score:.2f}(Δ={spatial_delta:.1f}) "
+        #         f"spk={pose_state.spike_count}/{pose_state.spatial_spike_count}"
+        #     )
+        # elif geometric_score is not None:
+        #     item["pose_dbg"] = f"geom={geometric_score:.2f} spat=warmup"
+        # else:
+        #     item["pose_dbg"] = "poseScore=-- (warmup)"
 
         # Dispara anomalia com cooldown
         if is_anomaly_final and (frame_count - pose_state.last_anomaly_frame) > anomaly_cooldown_frames:

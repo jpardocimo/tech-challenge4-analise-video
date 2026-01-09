@@ -155,7 +155,7 @@ class ActivityClassifier:
             priority = rules.get('priority', 0)
             if priority > best_priority:
                 best_priority = priority
-                best_action = action_name.replace("_", " ").title()
+                best_action = action_name.replace("_", "/").title()  # Usa / para atividades compostas
 
         return best_action
 

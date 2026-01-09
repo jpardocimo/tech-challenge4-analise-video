@@ -25,7 +25,8 @@ class VideoAnalysisLogger:
         # Escreve cabeçalho
         self.writer.writerow([
             "frame", "timestamp_ms", "track_id", "face_id", "tid_used",
-            "activity", "emotion", "pose_dbg", "anomalies", "bbox", "objects_detected"
+            "activity", "activity_raw", "posture", "body_pose_confidence",
+            "emotion", "pose_dbg", "anomalies", "bbox", "objects_detected"
         ])
 
         self.buffer = []
@@ -52,8 +53,8 @@ class VideoAnalysisLogger:
 
         if not render_data:
             self.buffer.append([
-                frame_count, timestamp_ms, "", "", "", "", "", "",
-                "|".join(anomalies or []), "", objects_str
+                frame_count, timestamp_ms, "", "", "", "", "", "", "",
+                "", "", "|".join(anomalies or []), "", objects_str
             ])
             return
 
@@ -76,7 +77,10 @@ class VideoAnalysisLogger:
                 track_id if track_id is not None else "",
                 face_id if face_id is not None else "",
                 temp_id,
-                item.get("activity", ""),
+                item.get("activity", ""),  # Label exibido na tela
+                item.get("activity_raw", ""),  # Atividade detectada pelo classifier
+                item.get("posture", ""),  # Postura detectada (standing/sitting/lying_down)
+                item.get("body_pose_confidence", ""),  # Confiança da detecção de postura
                 item.get("emotion", ""),
                 pose_debug,
                 anomalies_str,
