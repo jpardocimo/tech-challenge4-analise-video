@@ -1,0 +1,89 @@
+# =============================================================================
+# REQUIREMENTS PARA WINDOWS 10/11
+# =============================================================================
+# Instalação:
+#   pip install -r requirements-windows.txt
+# =============================================================================
+
+# Processamento de Vídeo e Imagens
+opencv-python>=4.8.0
+numpy>=1.24.0,<2.0.0
+
+# Detecção e Tracking de Objetos/Pessoas (YOLO)
+ultralytics>=8.0.0
+
+# PyTorch - CPU ou CUDA (detecta automaticamente se tem GPU NVIDIA)
+# Se você TEM GPU NVIDIA e quer usar CUDA, use o comando abaixo ANTES deste arquivo:
+#   pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+#
+# Se você NÃO TEM GPU ou quer usar CPU:
+torch>=2.0.0
+torchvision>=0.15.0
+torchaudio>=2.0.0
+
+# Detecção e Análise Facial
+insightface>=0.7.3
+onnxruntime>=1.15.0  # Versão CPU (para GPU use onnxruntime-gpu)
+
+# Análise de Emoções - TensorFlow
+deepface>=0.0.79
+tensorflow>=2.13.0,<2.16.0  # TensorFlow padrão para Windows
+
+# Utilitários
+Pillow>=10.0.0
+
+# =============================================================================
+# DEPENDÊNCIAS EXTRAS DO WINDOWS (podem ser necessárias)
+# =============================================================================
+# Se der erro ao instalar insightface ou opencv, você pode precisar:
+#
+# 1. Microsoft Visual C++ 14.0 ou superior
+#    Download: https://visualstudio.microsoft.com/visual-cpp-build-tools/
+#    Selecione: "Desktop development with C++"
+#
+# 2. Para problemas com DLLs faltando:
+#    - Baixe e instale: https://aka.ms/vs/17/release/vc_redist.x64.exe
+# =============================================================================
+
+# =============================================================================
+# NOTAS IMPORTANTES:
+# =============================================================================
+# 1. GPU NVIDIA (CUDA):
+#    Se você tem placa de vídeo NVIDIA e quer usar aceleração:
+#
+#    a) Desinstale PyTorch se já instalou:
+#       pip uninstall torch torchvision torchaudio
+#
+#    b) Instale versão CUDA:
+#       pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+#
+#    c) Continue com o resto do arquivo:
+#       pip install -r requirements-windows.txt
+#
+# 2. Apenas CPU:
+#    Se não tem GPU ou quer usar só CPU, apenas rode:
+#       pip install -r requirements-windows.txt
+#
+# 3. TensorFlow GPU (opcional):
+#    Se tem GPU NVIDIA e quer TensorFlow com CUDA:
+#       pip uninstall tensorflow
+#       pip install tensorflow[and-cuda]
+#
+# 4. Problemas comuns:
+#    - "error: Microsoft Visual C++ 14.0 is required"
+#      → Instale Visual C++ Build Tools (link acima)
+#
+#    - "DLL load failed"
+#      → Instale Visual C++ Redistributable (link acima)
+#
+#    - "No module named 'cv2'"
+#      → pip install --upgrade opencv-python
+#
+# 5. Versões do Python:
+#    - Recomendado: Python 3.10 ou 3.11
+#    - Evite: Python 3.12+ (algumas libs ainda não têm suporte completo)
+#
+# 6. Desempenho esperado:
+#    - CPU: ~5-10 FPS no processamento
+#    - GPU NVIDIA (CUDA): ~30-60 FPS
+# =============================================================================

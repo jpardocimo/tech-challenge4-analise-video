@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Projeto específico
+*.backup
+
+# Arquivos de saída (gerados na pasta output/)
+output/.*
+
+# IA
+.claude/
+
+# Garante que a pasta output existe (mas vazia)
+!output/.gitkeep
+
+# Modelos grandes (não commitar - baixar separadamente)
+# models/*.pt
+# models/*.task
+models/*.pt
+models/*.task
+ai_models/*.pt
+ai_models/*.task
+
+# Arquivos temporários
+*.tmp
+*.log
+
+
+/src/*.mp4

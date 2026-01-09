@@ -1,0 +1,26 @@
+# =============================================================================
+# REQUIREMENTS GENÉRICO
+# Para instalação específica, use:
+# - requirements-mac-m1.txt (MacBook Pro M1/M2/M3)
+# - requirements-windows.txt (Windows 10/11)
+# =============================================================================
+
+# Processamento de Vídeo e Imagens
+opencv-python>=4.8.0
+numpy>=1.24.0,<2.0.0
+
+# Detecção e Tracking de Objetos/Pessoas (YOLO)
+ultralytics>=8.0.0
+
+# Detecção e Análise Facial
+insightface>=0.7.3
+onnxruntime>=1.15.0
+
+# Análise de Emoções
+deepface>=0.0.79
+
+# Utilitários
+Pillow>=10.0.0
+
+# NOTA: PyTorch e TensorFlow não estão aqui porque dependem do sistema
+# Use o arquivo específico do seu sistema operacional

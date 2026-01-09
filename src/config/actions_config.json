@@ -1,0 +1,76 @@
+{
+  "actions": {
+    "trabalhando_com_laptop": {
+      "priority": 12,
+      "required_objects": ["laptop", "dining table"],
+      "pose_conditions": {
+        "posture": "sitting"
+      }
+    },
+    "trabalhando_com_celular": {
+      "priority": 12,
+      "required_objects": ["cell phone", "dining table"],
+      "pose_conditions": {
+        "posture": "sitting"
+      }
+    },
+    "levantando_bracos": {
+      "priority": 11,
+      "required_objects": [],
+      "pose_conditions": {
+        "both_arms_up": true
+      }
+    },
+    "lendo_na_mesa": {
+      "priority": 10,
+      "required_objects": ["book", "dining table"],
+      "pose_conditions": {
+        "posture": "sitting"
+      }
+    },
+    "lendo": {
+      "priority": 10,
+      "required_objects": ["book"],
+      "pose_conditions": {
+        "posture": ["sitting", "standing"]
+      }
+    },
+    "usando_celular": {
+      "priority": 9,
+      "required_objects": ["cell phone"],
+      "pose_conditions": {
+        "posture": ["sitting", "standing"]
+      }
+    },
+    "usando_laptop": {
+      "priority": 9,
+      "required_objects": ["laptop"],
+      "pose_conditions": {
+        "posture": "sitting"
+      }
+    },
+    "acenando": {
+      "priority": 9,
+      "required_objects": [],
+      "pose_conditions": {
+        "one_hand_above_neck": true,
+        "wave_motion": true,
+        "posture": ["standing", "sitting"]
+      }
+    },
+    "mãos_no_rosto": {
+      "priority": 8,
+      "required_objects": [],
+      "pose_conditions": {
+        "hands_position": "on_face"
+      }
+    },
+    "mão_na_testa": {
+      "priority": 8,
+      "required_objects": [],
+      "pose_conditions": {
+        "hands_position": "on_forehead"
+      }
+    }
+  }
+}

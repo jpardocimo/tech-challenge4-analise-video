@@ -1,0 +1,57 @@
+# =============================================================================
+# REQUIREMENTS PARA MACBOOK PRO M1/M2/M3 (Apple Silicon)
+# =============================================================================
+# Instalação:
+#   pip install -r requirements-mac-m1.txt
+# =============================================================================
+
+# Processamento de Vídeo e Imagens
+opencv-python>=4.8.0
+numpy>=1.24.0,<2.0.0
+
+# Detecção e Tracking de Objetos/Pessoas (YOLO)
+ultralytics>=8.0.0
+
+# PyTorch com suporte para Apple Silicon (MPS - Metal Performance Shaders)
+# IMPORTANTE: Instalar PyTorch ANTES de outras dependências
+torch>=2.0.0
+torchvision>=0.15.0
+torchaudio>=2.0.0
+
+# Detecção e Análise Facial
+insightface>=0.7.3
+onnxruntime>=1.15.0
+
+# Análise de Emoções - TensorFlow para Mac
+deepface>=0.0.79
+tensorflow-macos>=2.13.0  # Versão otimizada para Apple Silicon
+tensorflow-metal>=1.0.0   # Aceleração GPU no chip M1/M2/M3
+
+# Utilitários
+Pillow>=10.0.0
+
+# =============================================================================
+# NOTAS IMPORTANTES:
+# =============================================================================
+# 1. TensorFlow no M1:
+#    - tensorflow-macos: versão otimizada para macOS
+#    - tensorflow-metal: plugin para aceleração GPU (Apple Metal)
+#
+# 2. PyTorch no M1:
+#    - Suporte nativo para MPS (Metal Performance Shaders)
+#    - Muito mais rápido que versão CPU
+#
+# 3. Se der erro de instalação:
+#    - Certifique-se de estar usando Python 3.10 ou 3.11
+#    - Atualize o pip: pip install --upgrade pip
+#    - Instale Xcode Command Line Tools: xcode-select --install
+#
+# 4. Para verificar se está usando aceleração:
+#    Python:
+#      import torch
+#      print(torch.backends.mps.is_available())  # True = aceleração ativa
+#
+# 5. Desempenho esperado no M1:
+#    - 3-5x mais rápido que CPU com aceleração GPU
+#    - Consumo de energia muito menor
+# =============================================================================
