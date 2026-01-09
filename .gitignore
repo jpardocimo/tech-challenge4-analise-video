@@ -51,3 +51,4 @@ ai_models/*.task
 
 
 /src/*.mp4
+output/*

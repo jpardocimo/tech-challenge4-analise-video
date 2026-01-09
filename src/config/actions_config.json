@@ -58,14 +58,14 @@
         "posture": ["standing", "sitting"]
       }
     },
-    "mãos_no_rosto": {
+    "maos_no_rosto": {
       "priority": 8,
       "required_objects": [],
       "pose_conditions": {
         "hands_position": "on_face"
       }
     },
-    "mão_na_testa": {
+    "mao_na_testa": {
       "priority": 8,
       "required_objects": [],
       "pose_conditions": {

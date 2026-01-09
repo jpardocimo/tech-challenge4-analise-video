@@ -24,8 +24,8 @@ OUTPUT_LOG_CSV = f"{OUTPUT_DIR}/overlay_log_{TIMESTAMP}.csv"
 # CAMINHOS DE MODELOS
 # =============================================================================
 
-YOLO_POSE_MODEL_PATH = "models/yolo11s-pose.pt"
-YOLO_OBJECT_MODEL_PATH = "models/yolo11s.pt"
+YOLO_POSE_MODEL_PATH = "ai_models/yolo11s-pose.pt"
+YOLO_OBJECT_MODEL_PATH = "ai_models/yolo11s.pt" 
 INSIGHTFACE_MODEL_NAME = "buffalo_l"
 
 # =============================================================================
@@ -81,19 +81,19 @@ ACTION_CONFIRM_FRAMES = 4
 # =============================================================================
 
 # Janela para detecção de anomalias de movimento (frames)
-ANOMALY_WINDOW_SIZE = 60
+ANOMALY_WINDOW_SIZE = 10
 
 # Multiplicador de desvio padrão para threshold de anomalia
 ANOMALY_STD_MULTIPLIER = 3.0
 
 # Janela para movimento de pose (frames)
-POSE_MOTION_WINDOW = 30
+POSE_MOTION_WINDOW = 60
 
 # Multiplicador K para detecção de movimento abrupto
-POSE_MOTION_K = 2.2
+POSE_MOTION_K = 2.5
 
 # Cooldown entre detecções de anomalia (frames)
-ANOMALY_COOLDOWN_FRAMES = 10
+ANOMALY_COOLDOWN_FRAMES = 5
 
 # =============================================================================
 # DETECÇÃO DE EMOÇÕES

@@ -10,18 +10,18 @@ import os
 
 # Importações de configuração
 from config.settings import (
-    INPUT_VIDEO,
-    OUTPUT_VIDEO,
-    OUTPUT_REPORT,
-    OUTPUT_LOG_CSV,
-    OUTPUT_DIR,
-    ACTIONS_CONFIG_PATH,
-    SKIP_FRAMES,
-    LOG_EVERY_N_FRAMES,
-    LOG_FLUSH_INTERVAL,
-    POSE_MOTION_WINDOW,
-    POSE_MOTION_K,
-    ANOMALY_COOLDOWN_FRAMES
+    INPUT_VIDEO,#video de entrada
+    OUTPUT_VIDEO,#video de saida
+    OUTPUT_REPORT,#relatorio
+    OUTPUT_LOG_CSV,#log
+    OUTPUT_DIR,#pasta de saida
+    ACTIONS_CONFIG_PATH,#configuracao de atividades
+    SKIP_FRAMES,#frames para pular
+    LOG_EVERY_N_FRAMES,#frames para log
+    LOG_FLUSH_INTERVAL,#intervalo de log
+    POSE_MOTION_WINDOW,#janela de movimento
+    POSE_MOTION_K,#k de movimento
+    ANOMALY_COOLDOWN_FRAMES,#frames de cooldown - evita disparar a mesma anomalia repetidamente
 )
 
 # Importações de modelos
@@ -38,12 +38,12 @@ from analysis.activity_classifier import ActivityClassifier
 from analysis.anomaly_detector import PoseMotionState
 from analysis.body_face_matcher import match_faces_to_bodies
 
-# Importações de visualização
+# Importações de visualização - desenha as linhas e box nos objetos, pessoas, anomalias e os labels
 from visualization.renderer import (
-    draw_objects,
-    draw_person_ui,
-    draw_anomaly_banner,
-    draw_text_buffer
+    draw_objects,#desenho de objetos
+    draw_person_ui,#desenho de pessoas
+    draw_anomaly_banner,#desenho de anomalias
+    draw_text_buffer,#desenho de texto
 )
 
 # Importações de reporting

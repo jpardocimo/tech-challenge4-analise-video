@@ -21,11 +21,18 @@ torchaudio>=2.0.0
 # Detecção e Análise Facial
 insightface>=0.7.3
 onnxruntime>=1.15.0
+onnx>=1.15.0,<1.17.0  # Compatível com ml_dtypes
+
+# ONNX e ML Dependencies
+ml_dtypes>=0.4.0  # Necessário para onnx e compatível com numpy 1.x
+protobuf>=3.20.0,<5.0.0  # Compatível com onnx e tensorflow
 
 # Análise de Emoções - TensorFlow para Mac
+# IMPORTANTE: Usar APENAS tensorflow-macos, NÃO instalar tensorflow genérico
+tensorflow-macos==2.15.1  # Versão otimizada para Apple Silicon - FIXAR em 2.15.x
+tensorflow-metal==1.2.0   # Aceleração GPU no chip M1/M2/M3 - compatível com 2.15.x
+tf-keras>=2.15.0          # Necessário para deepface/retinaface com TF 2.15+
 deepface>=0.0.79
-tensorflow-macos>=2.13.0  # Versão otimizada para Apple Silicon
-tensorflow-metal>=1.0.0   # Aceleração GPU no chip M1/M2/M3
 
 # Utilitários
 Pillow>=10.0.0
@@ -34,24 +41,46 @@ Pillow>=10.0.0
 # NOTAS IMPORTANTES:
 # =============================================================================
 # 1. TensorFlow no M1:
-#    - tensorflow-macos: versão otimizada para macOS
+#    - tensorflow-macos: versão otimizada para macOS (FIXADO em 2.15.1)
 #    - tensorflow-metal: plugin para aceleração GPU (Apple Metal)
+#    - tf-keras: necessário para deepface/retinaface com TF 2.15+
+#    - CRÍTICO: NÃO instale o pacote 'tensorflow' genérico junto com tensorflow-macos
+#      Isso causa conflitos! Use APENAS tensorflow-macos==2.15.1
 #
 # 2. PyTorch no M1:
 #    - Suporte nativo para MPS (Metal Performance Shaders)
 #    - Muito mais rápido que versão CPU
 #
-# 3. Se der erro de instalação:
-#    - Certifique-se de estar usando Python 3.10 ou 3.11
-#    - Atualize o pip: pip install --upgrade pip
-#    - Instale Xcode Command Line Tools: xcode-select --install
+# 3. Se der erro de instalação ou conflito de dependências:
+#    a) Certifique-se de estar usando Python 3.10 ou 3.11
+#    b) Atualize o pip: pip install --upgrade pip
+#    c) Instale Xcode Command Line Tools: xcode-select --install
+#    d) Se necessário, recrie o ambiente virtual:
+#       - deactivate
+#       - rm -rf venv
+#       - python -m venv venv
+#       - source venv/bin/activate
+#       - pip install --upgrade pip
+#       - pip install -r requirements-mac-m1.txt
 #
-# 4. Para verificar se está usando aceleração:
+# 4. Erros comuns e soluções:
+#    - "No module named 'tf_keras'" ou "requires tf-keras package": 
+#      O tensorflow genérico foi instalado. Desinstale e reinstale:
+#      pip uninstall tensorflow tensorflow-macos tensorflow-metal tf-keras
+#      pip install tensorflow-macos==2.15.1 tensorflow-metal==1.2.0 tf-keras
+#    - "ml_dtypes has no attribute 'float4_e2m1fn'": 
+#      Reinstale: pip install --upgrade ml_dtypes onnx
+#    - "NumPy 1.x cannot be run in NumPy 2.x": 
+#      Downgrade: pip install "numpy<2.0.0"
+#    - "No module named 'onnxruntime'": 
+#      Instale: pip install onnxruntime
+#
+# 5. Para verificar se está usando aceleração:
 #    Python:
 #      import torch
 #      print(torch.backends.mps.is_available())  # True = aceleração ativa
 #
-# 5. Desempenho esperado no M1:
+# 6. Desempenho esperado no M1:
 #    - 3-5x mais rápido que CPU com aceleração GPU
 #    - Consumo de energia muito menor
 # =============================================================================
