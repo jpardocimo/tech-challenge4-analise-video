@@ -421,3 +421,44 @@ if __name__ == "__main__":
     print(f"📊 Gerando relatório de: {csv_file}")
     report = generate_report_from_csv(csv_file, str(output_file))
     print(f"✅ Relatório gerado com sucesso!")
+
+
+def generate_final_report(stats_summary: dict, output_path: str):
+    """
+    Gera relatório final de texto simples (compatibilidade com main.py)
+    
+    Args:
+        stats_summary: Dicionário com estatísticas do StatsManager
+        output_path: Caminho para salvar o relatório
+    """
+    report = f"""# Relatório de Análise de Vídeo
+
+## Estatísticas Gerais
+
+- Frames Processados: {stats_summary.get('frames_processados', 0)}
+- Pessoas Únicas: {stats_summary.get('pessoas_unicas', 0)}
+- Anomalias Detectadas: {stats_summary.get('anomalias', 0)}
+
+## Atividades Detectadas
+
+"""
+    
+    atividades = stats_summary.get('atividades', {})
+    if atividades:
+        for atividade, count in sorted(atividades.items(), key=lambda x: -x[1]):
+            report += f"- {atividade}: {count}\n"
+    else:
+        report += "Nenhuma atividade detectada.\n"
+    
+    report += f"\n## Emoções Detectadas\n\n"
+    
+    emocoes = stats_summary.get('emocoes', {})
+    if emocoes:
+        for emocao, count in sorted(emocoes.items(), key=lambda x: -x[1]):
+            report += f"- {emocao}: {count}\n"
+    else:
+        report += "Nenhuma emoção detectada.\n"
+    
+    # Salva relatório
+    Path(output_path).write_text(report, encoding='utf-8')
+    print(f"📄 Relatório salvo em: {output_path}")
