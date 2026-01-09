@@ -30,9 +30,9 @@ Sistema avançado de análise de vídeo com detecção de pessoas, reconheciment
 
 Este sistema processa vídeos em tempo real para:
 
-- 👤 **Detectar e rastrear pessoas** com tracking persistente
-- 😊 **Reconhecer faces e analisar emoções** de cada indivíduo
-- 🎯 **Classificar atividades** (lendo, trabalhando, acenando, etc.)
+- 👤 **Detectar faces** com tracking persistente
+- 😊 **Detectar e analisar emoções**
+- 🎯 **Detectar e classificar atividades** (lendo, trabalhando, acenando, etc.)
 - ⚠️ **Detectar anomalias** (quedas, movimentos abruptos, instabilidade emocional)
 - 📊 **Gerar relatórios analíticos** com insights automáticos
 
@@ -188,7 +188,7 @@ graph LR
 ### 1. Detecção de Pessoas e Tracking
 
 - **YOLO11s-pose**: Detecta pessoas com 17 keypoints corporais (COCO format)
-- **ByteTrack**: Tracking persistente com IDs únicos
+- **ByteTrack**: Tracking persistente com IDs 
 - **Skeleton rendering**: Visualização de esqueleto corporal
 
 ### 2. Reconhecimento Facial
