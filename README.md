@@ -282,7 +282,28 @@ pip install -r requirements-mac-m1.txt
 
 ### Windows 10/11
 
-```bash
+#### ⚠️ PRÉ-REQUISITO OBRIGATÓRIO - LEIA PRIMEIRO!
+
+**ANTES de instalar as dependências Python, você DEVE instalar o Visual Studio Build Tools:**
+
+1. **Baixe o Visual Studio Build Tools:**
+   - Acesse: https://visualstudio.microsoft.com/visual-cpp-build-tools/
+   - Baixe "Build Tools for Visual Studio 2022"
+
+2. **Durante a instalação, marque obrigatoriamente:**
+   - ✅ "Desenvolvimento para Desktop com C++"
+   - ✅ "Ferramentas de Build C++ v143 - VS 2022 C++ x64/x86"
+
+3. **Instale também o Visual C++ Redistributable:**
+   - https://aka.ms/vs/17/release/vc_redist.x64.exe
+
+4. **Reinicie o computador após a instalação**
+
+**❌ SEM o Visual Studio Build Tools, a instalação do insightface FALHARÁ!**
+
+#### Instalação
+
+```cmd
 # 1. Clone o repositório
 git clone <repo-url>
 cd tech-challenge4-analise-video
@@ -296,21 +317,36 @@ venv\Scripts\activate
 # 4. Instale dependências
 pip install --upgrade pip
 pip install -r requirements-windows.txt
+
+# 5. Os modelos do InsightFace são baixados automaticamente (~600MB)
+# Na primeira execução, aguarde o download dos modelos
 ```
 
-**💡 GPU NVIDIA**: Para usar aceleração CUDA no Windows, veja instruções em `requirements-windows.txt`
+#### 💡 GPU NVIDIA
+
+Para usar aceleração CUDA no Windows, instale PyTorch com CUDA **antes** das outras dependências:
+
+```cmd
+# Instale PyTorch com CUDA primeiro
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+
+# Depois instale o resto
+pip install -r requirements-windows.txt
+```
 
 ### Dependências Principais
 
-```
-opencv-python          # Processamento de vídeo
-ultralytics           # YOLO11 (pose + objects)
-insightface           # Detecção facial
-deepface              # Análise de emoções
-torch                 # Backend YOLO
-tensorflow            # Backend DeepFace
-pandas                # Análise de dados (relatórios)
-```
+| Pacote | Função |
+|--------|--------|
+| opencv-python | Processamento de vídeo |
+| ultralytics | YOLO11 (pose + objects) |
+| insightface | Detecção facial + reconhecimento |
+| deepface | Análise de emoções |
+| torch | Backend YOLO |
+| tensorflow | Backend DeepFace |
+| tf-keras | Compatibilidade TensorFlow 2.20+ |
+| onnxruntime | Backend modelos ONNX |
+| pandas | Análise de dados (relatórios) |
 
 ---
 

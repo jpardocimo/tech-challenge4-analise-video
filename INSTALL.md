@@ -62,24 +62,34 @@ python -c "import torch; print('PyTorch MPS disponível:', torch.backends.mps.is
 
 ## Windows 10/11
 
-### Pré-requisitos
+### ⚠️ PRÉ-REQUISITO OBRIGATÓRIO - LEIA PRIMEIRO!
+
+**ANTES de instalar as dependências Python, você DEVE instalar o Visual Studio Build Tools:**
+
+1. **Baixe o Visual Studio Build Tools:**
+   - Acesse: https://visualstudio.microsoft.com/visual-cpp-build-tools/
+   - Baixe "Build Tools for Visual Studio 2022"
+
+2. **Durante a instalação, marque obrigatoriamente:**
+   - ✅ "Desenvolvimento para Desktop com C++"
+   - ✅ "Ferramentas de Build C++ v143 - VS 2022 C++ x64/x86"
+
+3. **Instale também o Visual C++ Redistributable:**
+   - https://aka.ms/vs/17/release/vc_redist.x64.exe
+
+4. **Reinicie o computador após a instalação**
+
+**❌ SEM o Visual Studio Build Tools, a instalação do insightface FALHARÁ!**
+
+---
+
+### Pré-requisitos do Python
 
 1. **Python 3.10 ou 3.11**
    ```cmd
    python --version
    # Deve mostrar: Python 3.10.x ou 3.11.x
    ```
-
-2. **Microsoft Visual C++ 14.0+** (necessário para algumas bibliotecas)
-
-   Baixe e instale:
-   - [Visual C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
-   - Durante instalação, marque: **"Desktop development with C++"**
-
-3. **Visual C++ Redistributable** (para runtime)
-
-   Baixe e instale:
-   - [VC++ Redistributable x64](https://aka.ms/vs/17/release/vc_redist.x64.exe)
 
 ### Instalação Passo a Passo
 
@@ -101,7 +111,11 @@ python -m pip install --upgrade pip setuptools wheel
 # 5. Instale dependências
 pip install -r requirements-windows.txt
 
-# 6. Verifique instalação
+# 6. Baixe modelos do InsightFace (primeira execução)
+# Os modelos são baixados automaticamente (~600MB)
+python -c "from insightface.app import FaceAnalysis; print('Modelos OK')"
+
+# 7. Verifique instalação
 python -c "import torch; print('PyTorch instalado:', torch.__version__)"
 ```
 
@@ -123,16 +137,23 @@ pip install torch torchvision torchaudio --index-url https://download.pytorch.or
 # 6. Instale resto das dependências
 pip install -r requirements-windows.txt
 
-# 7. Verifique CUDA
+# 7. Baixe modelos do InsightFace
+python -c "from insightface.app import FaceAnalysis; print('Modelos OK')"
+
+# 8. Verifique CUDA
 python -c "import torch; print('CUDA disponível:', torch.cuda.is_available())"
 ```
 
 ### O que é instalado
 
 - **tensorflow**: TensorFlow padrão para Windows
+- **tf-keras**: Compatibilidade com TensorFlow 2.20+
 - **torch**: PyTorch CPU ou CUDA (dependendo da opção escolhida)
-- **insightface**: Requer Visual C++ (daí os pré-requisitos)
-- Todas as outras dependências
+- **insightface**: Detecção e reconhecimento facial (requer Visual C++)
+- **ultralytics**: YOLO11 para pose e detecção de objetos
+- **deepface**: Análise de emoções
+- **onnxruntime**: Backend para modelos ONNX do InsightFace
+- **Modelos do InsightFace**: Baixados automaticamente (~600MB)
 
 ### Desempenho Esperado
 
@@ -166,10 +187,11 @@ pip install torch torchvision torchaudio
 
 #### Problema: "error: Microsoft Visual C++ 14.0 is required"
 **Solução:**
-1. Instale [Visual C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
-2. Durante instalação, marque: "Desktop development with C++"
-3. Reinicie o computador
-4. Tente instalar novamente
+1. Instale [Visual Studio Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
+2. Durante instalação, marque: **"Desktop development with C++"**
+3. Marque também: **"Ferramentas de Build C++ v143"**
+4. Reinicie o computador
+5. Tente instalar novamente
 
 #### Problema: "DLL load failed while importing cv2"
 **Solução:**
@@ -193,13 +215,23 @@ pip install torch torchvision torchaudio
    pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
    ```
 
-#### Problema: "InsightFace failed to install"
+#### Problema: "No module named 'tf_keras'" com TensorFlow 2.20+
 **Solução:**
 ```cmd
-# Instale dependências de build primeiro
-pip install cmake
-pip install insightface --no-cache-dir
+pip install tf-keras
 ```
+
+#### Problema: InsightFace falha ao carregar modelos
+**Solução:**
+1. Verifique se os modelos foram baixados:
+   ```cmd
+   dir %USERPROFILE%\.insightface\models\buffalo_l
+   ```
+2. Se a pasta estiver vazia ou com arquivo corrompido (9 bytes):
+   ```cmd
+   del %USERPROFILE%\.insightface\models\buffalo_l\detection.onnx
+   ```
+3. O sistema recarregará os modelos automaticamente
 
 ---
 
@@ -232,6 +264,7 @@ def test_imports():
         'ONNX Runtime': 'onnxruntime',
         'DeepFace': 'deepface',
         'TensorFlow': 'tensorflow',
+        'tf-keras': 'tf_keras',
         'Pillow': 'PIL'
     }
 
@@ -246,6 +279,24 @@ def test_imports():
             failed.append(name)
 
     print("\n" + "="*60)
+
+    # Verifica modelos do InsightFace
+    print("\nMODELOS INSIGHTFACE:")
+    print("-"*60)
+    import os
+    models_dir = os.path.expanduser('~/.insightface/models/buffalo_l')
+    if os.path.exists(models_dir):
+        files = os.listdir(models_dir)
+        onnx_files = [f for f in files if f.endswith('.onnx')]
+        if onnx_files:
+            print(f"✅ {len(onnx_files)} modelo(s) encontrado(s):")
+            for f in onnx_files:
+                size_mb = os.path.getsize(os.path.join(models_dir, f)) / (1024*1024)
+                print(f"   - {f} ({size_mb:.1f} MB)")
+        else:
+            print("⚠️  Nenhum modelo .onnx encontrado")
+    else:
+        print("⚠️  Pasta de modelos não existe")
 
     # Verifica aceleração
     print("\nACELERAÇÃO GPU:")
@@ -314,17 +365,29 @@ VERIFICANDO INSTALAÇÃO
 ✅ ONNX Runtime                OK
 ✅ DeepFace                    OK
 ✅ TensorFlow                  OK
+✅ tf-keras                    OK
 ✅ Pillow                      OK
+
+============================================================
+
+MODELOS INSIGHTFACE:
+------------------------------------------------------------
+✅ 6 modelo(s) encontrado(s):
+   - 1k3d68.onnx (137.0 MB)
+   - 2d106det.onnx (4.8 MB)
+   - det_10g.onnx (16.1 MB)
+   - genderage.onnx (1.3 MB)
+   - w600k_r50.onnx (166.3 MB)
 
 ============================================================
 
 ACELERAÇÃO GPU:
 ------------------------------------------------------------
 PyTorch versão: 2.1.0
-✅ Apple MPS (Metal) disponível  # ou CUDA no Windows
+✅ Apenas CPU (sem aceleração GPU)  # ou CUDA no Windows
 
-TensorFlow versão: 2.15.0
-✅ TensorFlow GPU: 1 dispositivo(s)
+TensorFlow versão: 2.20.0
+⚠️  TensorFlow usando CPU
 
 ============================================================
 

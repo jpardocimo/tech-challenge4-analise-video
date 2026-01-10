@@ -7,7 +7,7 @@
 
 # Processamento de Vídeo e Imagens
 opencv-python>=4.8.0
-numpy>=1.24.0,<2.0.0
+numpy>=1.24.0
 
 # Detecção e Tracking de Objetos/Pessoas (YOLO)
 ultralytics>=8.0.0
@@ -27,22 +27,30 @@ onnxruntime>=1.15.0  # Versão CPU (para GPU use onnxruntime-gpu)
 
 # Análise de Emoções - TensorFlow
 deepface>=0.0.79
-tensorflow>=2.13.0,<2.16.0  # TensorFlow padrão para Windows
+tensorflow>=2.13.0
+tf-keras>=2.20.0  # Necessário para tensorflow>=2.20
 
 # Utilitários
 Pillow>=10.0.0
+pandas>=1.5.0
 
 # =============================================================================
-# DEPENDÊNCIAS EXTRAS DO WINDOWS (podem ser necessárias)
+# PRÉ-REQUISITO OBRIGATÓRIO DO WINDOWS
 # =============================================================================
-# Se der erro ao instalar insightface ou opencv, você pode precisar:
+# Antes de instalar as dependências Python, você DEVE instalar:
 #
-# 1. Microsoft Visual C++ 14.0 ou superior
+# 1. Microsoft Visual Studio Build Tools
 #    Download: https://visualstudio.microsoft.com/visual-cpp-build-tools/
-#    Selecione: "Desktop development with C++"
+#    Durante instalação, marque obrigatoriamente:
+#    ✓ "Desenvolvimento para Desktop com C++"
+#    ✓ "Ferramentas de Build C++ v143 - VS 2022 C++ x64/x86"
 #
-# 2. Para problemas com DLLs faltando:
-#    - Baixe e instale: https://aka.ms/vs/17/release/vc_redist.x64.exe
+# 2. Visual C++ Redistributable (pode ser necessário para DLLs)
+#    Download: https://aka.ms/vs/17/release/vc_redist.x64.exe
+#
+# 3. Reinicie o computador após a instalação
+#
+# SEM o Visual C++ Build Tools, a instalação do insightface FALHÁ!
 # =============================================================================
 
 # =============================================================================
@@ -72,12 +80,16 @@ Pillow>=10.0.0
 # 4. Problemas comuns:
 #    - "error: Microsoft Visual C++ 14.0 is required"
 #      → Instale Visual C++ Build Tools (link acima)
+#      → Marque "Desenvolvimento para Desktop com C++"
 #
 #    - "DLL load failed"
 #      → Instale Visual C++ Redistributable (link acima)
 #
 #    - "No module named 'cv2'"
 #      → pip install --upgrade opencv-python
+#
+#    - "tf_keras" não encontrado com tensorflow>=2.20
+#      → pip install tf-keras
 #
 # 5. Versões do Python:
 #    - Recomendado: Python 3.10 ou 3.11
@@ -86,4 +98,9 @@ Pillow>=10.0.0
 # 6. Desempenho esperado:
 #    - CPU: ~5-10 FPS no processamento
 #    - GPU NVIDIA (CUDA): ~30-60 FPS
+#
+# 7. Modelos do InsightFace:
+#    - São baixados automaticamente na primeira execução
+#    - Local: ~/.insightface/models/buffalo_l/
+#    - Tamanho: ~600MB
 # =============================================================================
