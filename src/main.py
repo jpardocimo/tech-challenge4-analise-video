@@ -153,9 +153,20 @@ def process_video():
     video_writer.release()
     cv2.destroyAllWindows()
 
-    # Relatório
+    # Relatório texto simples
     stats_summary = stats_manager.get_summary()
     generate_final_report(stats_summary, OUTPUT_REPORT)
+    
+    # Gera relatório analítico em Markdown automaticamente
+    print("\n📊 Gerando relatório analítico...")
+    from reporting.report_generator import generate_report_from_csv
+    analytical_report_path = OUTPUT_LOG_CSV.replace('.csv', '_analitico.md')
+    try:
+        generate_report_from_csv(OUTPUT_LOG_CSV, analytical_report_path)
+        print(f"📄 Relatório analítico salvo em: {analytical_report_path}")
+    except Exception as e:
+        print(f"⚠️ Erro ao gerar relatório analítico: {e}")
+    
     progress.print_summary(stats_summary, OUTPUT_LOG_CSV, OUTPUT_VIDEO, OUTPUT_REPORT)
 
 

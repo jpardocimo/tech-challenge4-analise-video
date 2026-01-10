@@ -40,10 +40,7 @@ output/.*
 # Modelos grandes (não commitar - baixar separadamente)
 # models/*.pt
 # models/*.task
-models/*.pt
-models/*.task
-ai_models/*.pt
-ai_models/*.task
+
 
 # Arquivos temporários
 *.tmp

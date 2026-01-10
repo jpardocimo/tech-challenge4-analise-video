@@ -92,7 +92,7 @@ POSTURE_ACTIVITY_LABELS = {
 
 # Mensagens de anomalias
 ANOMALY_MESSAGES = {
-    'fall_detected': 'POSSÍVEL QUEDA DETECTADA',
+    'fall_detected': 'POSSIVEL QUEDA DETECTADA',
     'abrupt_movement': 'MOVIMENTO ABRUPTO'
 }
 
@@ -104,19 +104,19 @@ ANOMALY_MESSAGES = {
 ANOMALY_WINDOW_SIZE = 10
 
 # Multiplicador de desvio padrão para threshold de anomalia
-ANOMALY_STD_MULTIPLIER = 3.0
+ANOMALY_STD_MULTIPLIER = 3.5
 
 # Janela para movimento de pose (frames)
 POSE_MOTION_WINDOW = 60
 
 # Multiplicador K para detecção de movimento abrupto de geometria (pose)
-POSE_MOTION_K = 2.5
+POSE_MOTION_K = 3
 
 # Multiplicador K para detecção de movimento espacial (variância de keypoints)
-POSE_MOTION_K_SPATIAL = 2.5
+POSE_MOTION_K_SPATIAL = 3
 
 # Cooldown entre detecções de anomalia (frames)
-ANOMALY_COOLDOWN_FRAMES = 5
+ANOMALY_COOLDOWN_FRAMES = 10
 
 # =============================================================================
 # DETECÇÃO DE EMOÇÕES
@@ -135,7 +135,7 @@ MIN_FACE_SIZE = 48
 EMOTION_HISTORY_WINDOW = 30
 
 # Threshold para detectar instabilidade emocional (mudanças)
-EMOTION_INSTABILITY_THRESHOLD = 3
+EMOTION_INSTABILITY_THRESHOLD = 7
 
 # =============================================================================
 # SUAVIZAÇÃO E TEMPORAL

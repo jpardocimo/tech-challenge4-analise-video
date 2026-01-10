@@ -149,7 +149,7 @@ def match_faces_to_bodies(
 
             # Detecta instabilidade emocional
             if len(emotion_history) > EMOTION_INSTABILITY_THRESHOLD:
-                body_data['anomalies'].append("Possível CARETA ou Instabilidade Emocional")
+                body_data['anomalies'].append("Possivel CARETA ou Instab. Emocional")
                 stats_manager.add_anomalia()
 
             body_data['face_id'] = face_id
